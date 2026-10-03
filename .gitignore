@@ -1,0 +1,37 @@
+# Footage: only the manifest is committed
+media/*
+!media/SOURCES.md
+
+# Recordings / NVR output
+/recordings/
+/videos/
+*.mp4
+*.mkv
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# VS Code local settings
+.vscode/*
+!.vscode/extensions.json
+*.code-workspace
+
+# Docker volume / bind-mount data dirs
+/data/
+/volumes/
+/mysql/
+*.sql
+*.sql.gz
