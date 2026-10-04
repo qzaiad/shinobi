@@ -1,0 +1,27 @@
+[project]
+name = "shinobi-port-twin"
+version = "0.0.0"
+description = "Simulated port cameras -> Shinobi -> evaluator -> digital twin"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = ["--import-mode=importlib", "--strict-markers"]
+markers = [
+    "integration: needs local tools such as ffmpeg/ffprobe, no running stack",
+    "e2e: needs the running docker compose stack",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "PLW1514"]  # PLW1514: explicit encoding= on open()/Path text I/O
+preview = true
+explicit-preview-rules = true  # enable only preview rules listed by exact code

@@ -26,7 +26,9 @@ CLAUDE.md, README.md, Makefile, docker-compose.yml, .env.example
 compose/                  generated / profile-specific compose files
 sim/                      cameras.yaml, gen_compose.py (camera simulation)
 media/                    footage (gitignored) — only SOURCES.md is committed
+tools/                    Python dev tools (streamprobe: ffprobe stream health / GOP check)
 scripts/                  fetch_media.sh, probe.sh, chaos.sh, provision_monitors.py, inject_event.py
+tools/streamprobe/        ffprobe-based stream health check (codec, pix_fmt, B-frames, GOP regularity)
 shinobi-config/           exported monitor JSON templates (no secrets)
 services/common/          shinobi_client.py, schema.py (shared)
 services/webhook-receiver/
@@ -46,9 +48,13 @@ docker compose up -d                 # start stack (use --profile sim|core|twin 
 docker compose logs -f shinobi
 ffplay rtsp://localhost:8554/cam-gate
 mosquitto_sub -v -t 'shinobi/#' -t 'port/#'
-uv venv && source .venv/bin/activate # Python 3.14 pinned in .python-version
-python -m pytest                     # unit tests
-python -m pytest -m e2e              # end-to-end (needs running stack)
+uv sync                              # create .venv (Python 3.14 pinned) + dev deps
+uv run pytest                        # all tests (unit + integration)
+uv run pytest -m "not integration"   # pure unit tests only
+uv run pytest -m e2e                 # end-to-end (needs running stack)
+uv run python -m tools.streamprobe rtsp://localhost:8554/cam-gate --seconds 10 [--json]  # check stream conventions
+uvx ruff check . && uvx ruff format .
+uv run python -m tools.streamprobe rtsp://localhost:8554/cam-gate [--seconds N] [--json]
 ./scripts/fetch_media.sh             # restore footage on a fresh clone
 ```
 Update this section when commands change.
@@ -81,7 +87,11 @@ Update this section when commands change.
 
 ## Simulation rules
 - Only use port footage whose license allows reuse; record source, author, license and date in `media/SOURCES.md`. Do not restream live public webcams.
-- Simulated cameras should behave like real IP cameras: H.264, no B-frames, fixed GOP (≈ 2 s), main + sub stream, timestamp overlay.
+- Simulated cameras must behave like real IP cameras. Convention:
+  - **H.264 Main profile, `yuv420p`, `-bf 0` (no B-frames), fixed GOP = 2 s** (`-g` = 2 × fps, `-keyint_min` = same, `-sc_threshold 0`),
+  - **RTSP over TCP** (`-rtsp_transport tcp`) for publishing and pulling,
+  - main + sub stream, timestamp overlay.
+- Check every new or changed camera with `uv run python -m tools.streamprobe <url>`; it must report fixed GOP ≈ 2 s and no B-frames.
 
 ## How to work with me
 - Before larger changes, give a short plan and wait for confirmation.
