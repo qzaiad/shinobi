@@ -1,5 +1,6 @@
-# Footage: only the manifest is committed
+# Footage: only the manifest and attribution are committed
 media/*
+!media/manifest.tsv
 !media/SOURCES.md
 
 # Recordings / NVR output
@@ -7,6 +8,7 @@ media/*
 /videos/
 *.mp4
 *.mkv
+*.webm
 
 # Secrets
 .env

@@ -25,7 +25,7 @@ Contract between components = MQTT topics + JSON schemas in `docs/schema/`. Neve
 CLAUDE.md, README.md, Makefile, docker-compose.yml, .env.example
 compose/                  generated / profile-specific compose files
 sim/                      cameras.yaml, gen_compose.py (camera simulation)
-media/                    footage (gitignored) — only SOURCES.md is committed
+media/                    footage (gitignored) — only manifest.tsv + SOURCES.md are committed
 tools/                    Python dev tools (streamprobe: ffprobe stream health / GOP check)
 scripts/                  fetch_media.sh, probe.sh, chaos.sh, provision_monitors.py, inject_event.py
 tools/streamprobe/        ffprobe-based stream health check (codec, pix_fmt, B-frames, GOP regularity)
@@ -55,7 +55,7 @@ uv run pytest -m e2e                 # end-to-end (needs running stack)
 uv run python -m tools.streamprobe rtsp://localhost:8554/cam-gate --seconds 10 [--json]  # check stream conventions
 uvx ruff check . && uvx ruff format .
 uv run python -m tools.streamprobe rtsp://localhost:8554/cam-gate [--seconds N] [--json]
-./scripts/fetch_media.sh             # restore footage on a fresh clone
+./scripts/fetch_media.sh [--pin] [--only ID] [--probe]   # restore footage (run before the simulator)
 ```
 Update this section when commands change.
 
@@ -84,6 +84,12 @@ Update this section when commands change.
 - Events leave Shinobi via detector webhooks, MQTT outbound (`mqttClient` enabled in `conf.json`), the REST API, or WebSocket. The chosen primary transport is recorded in `docs/adr/`.
 - Monitor configs are provisioned from `sim/cameras.yaml` + `shinobi-config/` by `scripts/provision_monitors.py`; don't rely on hand-made UI changes — export them back to the repo.
 - **Shinobi docs and APIs change. Do not invent endpoints, config keys, payload fields or plugin names.** If unsure, say so and check https://docs.shinobi.video or the Shinobi source on GitLab, or inspect real payloads from the running instance.
+
+## Media policy
+- **Never commit media.** Everything under `media/` is gitignored except `manifest.tsv` and `SOURCES.md`.
+- **`media/manifest.tsv` is the source of truth** for footage: id, role, filename, URL, pinned sha256, license, author. Add or change clips there (plus a matching row in `media/SOURCES.md`), never by dropping files into `media/`.
+- **NC and ND licenses are excluded.** Allowed: CC0-1.0, CC-BY-*, CC-BY-SA-*, PD, Pexels, Pixabay (enforced by `tests/test_media_manifest.py`). No live webcams.
+- **Run `./scripts/fetch_media.sh` before starting the simulator** (fresh clone, or after the manifest changes). New rows: `--pin` records the hash. Selection rationale and source ffprobe data: `docs/notes/03-port-footage.md`.
 
 ## Simulation rules
 - Only use port footage whose license allows reuse; record source, author, license and date in `media/SOURCES.md`. Do not restream live public webcams.

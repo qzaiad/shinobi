@@ -90,7 +90,7 @@ Units: pts vs pts_time
 In this MP4 the time base is 1/12800 s, so at 25 fps each frame is 512 ticks long:
 
 
-pts_time = pts × time_base = 1536 × 1/12800 = 0.120 s
+pts_time = pts Ã— time_base = 1536 Ã— 1/12800 = 0.120 s
 MP4 commonly uses 1/12800 here. RTP video always uses a 90 kHz clock (time base 1/90000, so 3600 ticks per frame at 25 fps), and MPEG-TS uses 1/90000 too. Integer ticks keep timing exact, with no floating-point drift over hours of recording. pts_time is just ffprobe's convenience conversion to seconds.
 
 Example 1: B-frames make decode order differ from display order
@@ -122,7 +122,7 @@ pts=512  dts=512
 pts=1024 dts=1024     ? decode order = display order, no reorder buffer
 This is a key reason CCTV cameras disable B-frames. Each B-frame forces the decoder to wait for a future frame before it can show anything, which adds latency (here 2 frames = 80 ms). It also makes cutting a recording at an arbitrary packet messier.
 
-Example 2: timing isn't "frame index ÷ fps"
+Example 2: timing isn't "frame index Ã· fps"
 Even without reordering, you can't assume frame n is shown at n/fps:
 
 Dropped frames. A camera under load, or RTSP over UDP with packet loss, skips frames. The PTS jumps (e.g. 0.12 ? 0.20) and playback stays in sync with real time. Counting frames would drift.
