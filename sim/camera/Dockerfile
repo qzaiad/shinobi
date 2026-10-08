@@ -6,5 +6,6 @@ RUN apt-get update \
 
 COPY --chmod=0755 publish.sh /usr/local/bin/publish.sh
 
-# Configure with CAM_NAME, INPUT, RTSP_URL, MODE (copy|encode), FPS, BITRATE.
+# Pass the full ffmpeg command as the container command (generated fleet), or set
+# CAM_NAME, INPUT, RTSP_URL, MODE (copy|encode), FPS, BITRATE.
 ENTRYPOINT ["/usr/local/bin/publish.sh"]

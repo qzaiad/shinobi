@@ -7,13 +7,29 @@ Goal: simulated port cameras → Shinobi (ingest, record, detect) → evaluation
 - Track where you are in `docs/progress.md` (one line per session: date, session, commit hash, notes).
 - Rule of thumb: if a session overruns, split it and commit what works. Don't leave a session uncommitted.
 
+## How explanations work in this plan
+
+The developer is an experienced C++/Linux engineer but a **beginner in video, CCTV, NVRs (Shinobi), MQTT
+and digital twins**. So every "Learn" topic is explained in depth, not as a summary:
+
+- **Diagrams first.** Each mechanism gets an ASCII diagram in the explanation and in the session's notes:
+  data flow (who sends what to whom, over which protocol/port), timelines (frames, GOPs, PTS/DTS,
+  loop boundaries, reconnects), and structure (packets, NAL units, compose services, MQTT topic trees).
+- **Build up from zero.** Define every video/streaming/Shinobi term the first time it appears and say
+  why it matters for this project; don't assume prior knowledge of codecs, containers, RTSP or NVRs.
+- **Show, then explain.** Pair each concept with a real command and its real output from this repo
+  (ffprobe, ffmpeg, docker, mosquitto_sub), annotated line by line.
+- **Say what breaks.** For each setting, show what goes wrong without it (stall, gap, artefact, false event).
+- Generic programming basics (Python, bash, git, Docker CLI usage) can stay brief.
+- Notes go in `docs/notes/` or `docs/theory/` and keep the diagrams, so they can be re-read later.
+
 ## Target architecture
 
 ```
- port footage (licensed clips, media/ gitignored)
-        │  FFmpeg loop (-re -stream_loop -1), H.264, fixed GOP, timestamp overlay
+ port footage (licensed clips, media/ gitignored; normalized to camera profile v1)
+        │  sim/cameras.yaml → compose/cameras.generated.yml → FFmpeg loop (-re -stream_loop -1), H.264, fixed GOP, timestamp overlay
         ▼
- MediaMTX (RTSP :8554)  rtsp://mediamtx:8554/cam-gate | cam-berth | cam-yard | cam-waterway
+ MediaMTX (RTSP :8554)  rtsp://mediamtx:8554/cam-gate | cam-quay | cam-yard | cam-waterway
         │
         ▼
  Shinobi (:8080)  monitors · recording · motion · object-detection plugin (YOLO/TensorFlow)
@@ -71,20 +87,20 @@ Everything runs from one `docker compose` stack. Services talk only via MQTT top
 
 ### Session 4 — First RTSP camera
 - **Learn:** MediaMTX as RTSP server (publish vs read paths), FFmpeg `-re`, `-stream_loop -1`, `-c copy` vs re-encode.
-- **Do:** `docker-compose.yml` with `mediamtx` and one `cam-gate` FFmpeg publisher. Watch with `ffplay rtsp://localhost:8554/cam-gate`.
+- **Do:** `docker-compose.yml` with `mediamtx` and one `cam-gate` FFmpeg publisher. Watch with `ffplay rtsp://localhost:8554/cam-gate`. Added: camera profile v1 (`docs/camera-profile.md`): `sim/scripts/normalize.sh` re-encodes `media/raw/` clips (H.264 Main, ≤ 1280 wide, 25 fps, GOP 50, no B-frames/audio) and `sim/scripts/probe_clip.sh` checks them.
 - **Done when:** Stream plays continuously across loop boundaries without a stall.
 - **Commit:** `feat(sim): stream first simulated camera via MediaMTX`
 
 ### Session 5 — Camera fleet as config
 - **Learn:** Why cameras should be data, not hand-written services.
-- **Do:** `sim/cameras.yaml` (id, role, clip, resolution, fps, bitrate, GOP); `sim/gen_compose.py` generates `compose/cameras.generated.yml`. Four cameras: `cam-gate`, `cam-berth`, `cam-yard`, `cam-waterway`. pytest for the generator.
+- **Do:** `sim/cameras.yaml` (`version: 1`, `defaults`, per camera: id, role, clip under `media/`, resolution, fps, bitrate, GOP); `sim/gen_compose.py` (pydantic validation, pure `render()`, `--check`) generates `compose/cameras.generated.yml`, one service per camera running an exec-form ffmpeg command under `publish.sh` (restart + SIGTERM). Four cameras named after the footage roles: `cam-gate`, `cam-quay` (720p15), `cam-yard`, `cam-waterway` (720p10), all 2 s GOP. `scripts/sim-up.sh` / `sim-down.sh`. pytest for the generator incl. a golden test of the committed file.
 - **Done when:** Changing the YAML and re-running the generator adds/removes cameras.
 - **Commit:** `feat(sim): generate camera fleet from cameras.yaml`
 
 ### Session 6 — Realism
-- **Learn:** Encoder settings real IP cameras use; main stream vs sub stream.
-- **Do:** Re-encode to H.264 (`-preset veryfast -tune zerolatency -bf 0 -g <2×fps>`), `drawtext` overlay with camera id + wall-clock time, a low-res sub stream per camera (`/cam-gate-sub`). Optional: snapshot endpoint simulation via `ffmpeg -frames:v 1`.
-- **Done when:** `scripts/probe.sh` against the live RTSP stream shows the configured GOP and no B-frames.
+- **Learn:** Encoder settings real IP cameras use; main stream vs sub stream and why an NVR uses each (record vs detect/preview). Live re-encoding with fixed GOP and no B-frames already happens since Session 5.
+- **Do:** `drawtext` overlay with camera id + wall-clock time; a low-res sub stream per camera (`/cam-gate-sub`), configured as optional fields in `sim/cameras.yaml` and rendered by `gen_compose.py` (one ffmpeg, two outputs). Optional: snapshot endpoint simulation via `ffmpeg -frames:v 1`.
+- **Done when:** `uv run python -m tools.streamprobe` against each main and sub stream shows the configured resolution, GOP and no B-frames; the overlay clock matches wall-clock time.
 - **Commit:** `feat(sim): realistic encoding, timestamp overlay and sub streams`
 
 ### Session 7 — Fault injection & health checks
@@ -135,13 +151,13 @@ Everything runs from one `docker compose` stack. Services talk only via MQTT top
 
 ### Session 14 — Motion detection
 - **Learn:** Detector settings, regions, sensitivity/thresholds, "Send Frames", detector resolution/fps, event-based recording and buffer time.
-- **Do:** Regions: gate lane (`cam-gate`), berth edge (`cam-berth`), restricted quay zone. Tune until events are meaningful, not constant (water movement and lighting are your enemies).
+- **Do:** Regions: gate lane (`cam-gate`), berth edge and restricted quay zone (`cam-quay`). Tune until events are meaningful, not constant (water movement and lighting are your enemies).
 - **Done when:** Motion events appear in the event list with sane frequency; tuning values documented.
 - **Commit:** `feat(shinobi): configure motion detection regions for port cameras`
 
 ### Session 15 — Object detection plugin
 - **Learn:** Detector plugins (TensorFlow, YOLO, DeepStack, YOLOv9-ONNX Docker plugin), plugin key in `conf.json`, host vs client plugin modes. Start with ONE plugin.
-- **Do:** Run a YOLO-based plugin container, connect it, enable Object Detection on `cam-gate` and `cam-berth`.
+- **Do:** Run a YOLO-based plugin container, connect it, enable Object Detection on `cam-gate` and `cam-quay`.
 - **Done when:** Events with labels (e.g. `truck`, `boat`, `person`) and confidences appear.
 - **Commit:** `feat(shinobi): add object detection plugin to stack`
 

@@ -3,7 +3,10 @@ name = "shinobi-port-twin"
 version = "0.0.0"
 description = "Simulated port cameras -> Shinobi -> evaluator -> digital twin"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pydantic>=2",
+    "pyyaml>=6",
+]
 
 [dependency-groups]
 dev = ["pytest>=8"]

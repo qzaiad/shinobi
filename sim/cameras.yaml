@@ -1,0 +1,50 @@
+# Simulated camera fleet. Source of truth for compose/cameras.generated.yml:
+# edit this file, then run `uv run python sim/gen_compose.py` (or scripts/sim-up.sh).
+#
+# clip: file under media/ (normalized to camera profile v1, see docs/camera-profile.md;
+# run ./scripts/fetch_media.sh and sim/scripts/normalize.sh first).
+# Convention: gop = 2 x fps (2 s GOP); the generator warns otherwise.
+version: 1
+
+defaults:
+  image: shinobi-sim-camera:local
+  build: ./sim/camera
+  preset: veryfast
+  transport: tcp
+
+cameras:
+  - id: cam-gate
+    role: gate
+    clip: gate_santos_port.mp4
+    width: 1280
+    height: 720
+    fps: 15
+    bitrate: 2M
+    gop: 30
+
+  - id: cam-quay
+    role: quay
+    clip: quay_sts_truck_loading.mp4
+    width: 1280
+    height: 720
+    fps: 15
+    bitrate: 4M
+    gop: 30
+
+  - id: cam-yard
+    role: yard
+    clip: yard_malta_freeport.mp4
+    width: 1280
+    height: 720
+    fps: 10
+    bitrate: 1.5M
+    gop: 20
+
+  - id: cam-waterway
+    role: waterway
+    clip: waterway_porpoise_bay.mp4
+    width: 1280
+    height: 720
+    fps: 10
+    bitrate: 3M
+    gop: 20

@@ -7,7 +7,7 @@ The learning plan lives in `docs/learning-plan.md`; current progress in `docs/pr
 
 ## About the developer
 - Senior C++ developer (15+ years), systems and Linux networking background; also Python (pytest) and vanilla JS.
-- New to Shinobi. Explain Shinobi- and video-specific mechanisms (RTSP/RTP, codecs, FFmpeg flags, event flow) at a senior level; skip generic programming basics.
+- **Beginner in video/CCTV, Shinobi, MQTT and digital twins.** Explain those mechanisms (RTSP/RTP, codecs, GOP/PTS/DTS, FFmpeg flags, NVR internals, event flow) in depth and with ASCII diagrams (data flow, timelines, packet/stream structure), defining each term on first use and showing what breaks without it. See "How explanations work" in `docs/learning-plan.md`. Skip generic programming basics.
 - Works on Ubuntu in VS Code.
 
 ## Architecture
@@ -60,6 +60,9 @@ cp .env.example .env                 # once; sets MTX_TAG for compose
 sim/scripts/check_stream.sh rtsp://localhost:8554/cam-gate media/gate_santos_port.mp4  # DTS continuity across loop boundaries (~2.5x clip length)
 sim/scripts/normalize.sh media/raw/<clip> media/<clip>.mp4   # re-encode to the camera profile (docs/camera-profile.md)
 sim/scripts/probe_clip.sh media/<clip>.mp4                   # PASS/FAIL per profile check; exit 1 on any FAIL
+scripts/sim-up.sh                    # generate fleet from sim/cameras.yaml + start mediamtx and all cameras
+scripts/sim-down.sh                  # stop mediamtx and all cameras
+uv run python sim/gen_compose.py [--check]   # regenerate compose/cameras.generated.yml (--check: exit 1 if stale)
 ```
 Update this section when commands change.
 
