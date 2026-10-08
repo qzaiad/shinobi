@@ -1,0 +1,19 @@
+services:
+  mediamtx:
+    image: bluenviron/mediamtx:${MTX_TAG:?set MTX_TAG in .env}
+    volumes:
+      - ./sim/mediamtx/mediamtx.yml:/mediamtx.yml:ro
+    ports:
+      - "127.0.0.1:8554:8554/tcp"
+    restart: unless-stopped
+
+  cam-gate:
+    build: ./sim/camera
+    volumes:
+      - ./media:/footage:ro
+    environment:
+      CAM_NAME: cam-gate
+      INPUT: /footage/gate_santos_port.mp4
+    depends_on: [mediamtx]
+    init: true
+    restart: unless-stopped

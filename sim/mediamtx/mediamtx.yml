@@ -1,0 +1,22 @@
+# MediaMTX config for the camera simulator.
+# Mounted read-only at /mediamtx.yml (the image is FROM scratch with
+# /mediamtx and /mediamtx.yml at the root). Anything not set here uses
+# MediaMTX defaults; the default auth lets anyone publish and read.
+
+logLevel: info
+
+# RTSP only, and TCP-interleaved only: cameras publish and Shinobi pulls
+# over TCP, so UDP/multicast ports are never needed.
+rtsp: true
+rtspTransports: [tcp]
+rtspAddress: :8554
+
+rtmp: false
+hls: false
+webrtc: false
+srt: false
+moq: false
+
+paths:
+  # Any path a camera publishes to (rtsp://mediamtx:8554/<CAM_NAME>).
+  all_others:

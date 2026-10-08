@@ -56,6 +56,10 @@ uv run python -m tools.streamprobe rtsp://localhost:8554/cam-gate --seconds 10 [
 uvx ruff check . && uvx ruff format .
 uv run python -m tools.streamprobe rtsp://localhost:8554/cam-gate [--seconds N] [--json]
 ./scripts/fetch_media.sh [--pin] [--only ID] [--probe]   # restore footage (run before the simulator)
+cp .env.example .env                 # once; sets MTX_TAG for compose
+sim/scripts/check_stream.sh rtsp://localhost:8554/cam-gate media/gate_santos_port.mp4  # DTS continuity across loop boundaries (~2.5x clip length)
+sim/scripts/normalize.sh media/raw/<clip> media/<clip>.mp4   # re-encode to the camera profile (docs/camera-profile.md)
+sim/scripts/probe_clip.sh media/<clip>.mp4                   # PASS/FAIL per profile check; exit 1 on any FAIL
 ```
 Update this section when commands change.
 
