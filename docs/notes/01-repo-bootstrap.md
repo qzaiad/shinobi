@@ -200,7 +200,7 @@ Your machine also has pyenv with a global Python 3.8. `uv run` ignores it and al
 
 ```
 $ uv run python -c 'import sys; print(sys.executable)'
-/home/abuahmad/git/shinobi/.venv/bin/python3
+/home/username/git/shinobi/.venv/bin/python3
 $ uv run python --version
 Python 3.14.6
 ```

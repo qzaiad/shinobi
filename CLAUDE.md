@@ -76,6 +76,7 @@ Update this section when commands change.
 - Append a line to `docs/progress.md` (date, session, short note) as part of the same commit.
 - Never `push --force`, rewrite history, or push without being asked.
 - Never commit: media files, recordings, `.env`, API keys, group keys, passwords, database dumps.
+- Never put the local OS username in a committed or published file: write home paths as `/home/username/...` (also in pasted command output).
 
 ## Coding conventions
 - Python ≥ 3.12, type hints everywhere, `@dataclass(slots=True)` (frozen where sensible) for data, `httpx` for HTTP, `paho-mqtt` (or `aiomqtt`) for MQTT, FastAPI for small HTTP services.
