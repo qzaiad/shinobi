@@ -1,0 +1,8 @@
+# Text files: UTF-8 content, normalized to LF in the repo and working tree
+* text=auto eol=lf
+
+# Binary media (never diff/merge, never EOL-convert)
+*.mp4 binary
+*.mkv binary
+*.jpg binary
+*.png binary
