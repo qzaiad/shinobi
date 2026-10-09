@@ -93,7 +93,7 @@ Everything runs from one `docker compose` stack. Services talk only via MQTT top
 
 ### Session 5 — Camera fleet as config
 - **Learn:** Why cameras should be data, not hand-written services.
-- **Do:** `sim/cameras.yaml` (`version: 1`, `defaults`, per camera: id, role, clip under `media/`, resolution, fps, bitrate, GOP); `sim/gen_compose.py` (pydantic validation, pure `render()`, `--check`) generates `compose/cameras.generated.yml`, one service per camera running an exec-form ffmpeg command under `publish.sh` (restart + SIGTERM). Four cameras named after the footage roles: `cam-gate`, `cam-quay` (720p15), `cam-yard`, `cam-waterway` (720p10), all 2 s GOP. `scripts/sim-up.sh` / `sim-down.sh`. pytest for the generator incl. a golden test of the committed file.
+- **Do:** `sim/cameras.yaml` (`version: 1`, now v2 since Session 6, `defaults`, per camera: id, role, clip under `media/`, resolution, fps, bitrate, GOP); `sim/gen_compose.py` (pydantic validation, pure `render()`, `--check`) generates `compose/cameras.generated.yml`, one service per camera running an exec-form ffmpeg command under `publish.sh` (restart + SIGTERM). Four cameras named after the footage roles: `cam-gate`, `cam-quay` (720p15), `cam-yard`, `cam-waterway` (720p10), all 2 s GOP. `scripts/sim-up.sh` / `sim-down.sh`. pytest for the generator incl. a golden test of the committed file.
 - **Done when:** Changing the YAML and re-running the generator adds/removes cameras.
 - **Commit:** `feat(sim): generate camera fleet from cameras.yaml`
 

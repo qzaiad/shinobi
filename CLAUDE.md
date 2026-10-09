@@ -60,9 +60,10 @@ cp .env.example .env                 # once; sets MTX_TAG for compose
 sim/scripts/check_stream.sh rtsp://localhost:8554/cam-gate media/gate_santos_port.mp4  # DTS continuity across loop boundaries (~2.5x clip length)
 sim/scripts/normalize.sh media/raw/<clip> media/<clip>.mp4   # re-encode to the camera profile (docs/camera-profile.md)
 sim/scripts/probe_clip.sh media/<clip>.mp4                   # PASS/FAIL per profile check; exit 1 on any FAIL
-scripts/sim-up.sh                    # generate fleet from sim/cameras.yaml + start mediamtx and all cameras
+scripts/sim-up.sh                    # generate fleet from sim/cameras.yaml + start mediamtx and all cameras (main /cam-x + sub /cam-x-sub)
 scripts/sim-down.sh                  # stop mediamtx and all cameras
 uv run python sim/gen_compose.py [--check]   # regenerate compose/cameras.generated.yml (--check: exit 1 if stale)
+sim/scripts/snapshot.sh rtsp://localhost:8554/cam-gate-sub [out.jpg]   # one JPEG; compare OSD clock with host UTC
 ```
 Update this section when commands change.
 
@@ -104,7 +105,7 @@ Update this section when commands change.
 - Simulated cameras must behave like real IP cameras. Convention:
   - **H.264 Main profile, `yuv420p`, `-bf 0` (no B-frames), fixed GOP = 2 s** (`-g` = 2 × fps, `-keyint_min` = same, `-sc_threshold 0`),
   - **RTSP over TCP** (`-rtsp_transport tcp`) for publishing and pulling,
-  - main + sub stream, timestamp overlay.
+  - main + sub stream (`/<id>` and `/<id>-sub`, sub 640×360 @ 10 fps by default), UTC timestamp + camera id OSD (`drawtext`).
 - Check every new or changed camera with `uv run python -m tools.streamprobe <url>`; it must report fixed GOP ≈ 2 s and no B-frames.
 
 ## How to work with me

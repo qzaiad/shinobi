@@ -4,13 +4,24 @@
 # clip: file under media/ (normalized to camera profile v1, see docs/camera-profile.md;
 # run ./scripts/fetch_media.sh and sim/scripts/normalize.sh first).
 # Convention: gop = 2 x fps (2 s GOP); the generator warns otherwise.
-version: 1
+#
+# Every camera publishes a main stream (rtsp://mediamtx:8554/<id>, recording) and, unless
+# `sub: null`, a sub stream (<id>-sub, detection + live view) from one ffmpeg process.
+# A camera's `sub:` mapping overrides single fields of defaults.sub; sub gop defaults to 2 x fps.
+# osd: burn "YYYY-MM-DD HH:MM:SS UTC" (top-left) and the camera id (bottom-right) into the pixels.
+version: 2
 
 defaults:
   image: shinobi-sim-camera:local
   build: ./sim/camera
   preset: veryfast
   transport: tcp
+  osd: true
+  sub:
+    width: 640
+    height: 360
+    fps: 10
+    bitrate: 384k
 
 cameras:
   - id: cam-gate
