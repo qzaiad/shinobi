@@ -319,6 +319,9 @@ connection:
 
 `mediamtx` resolves because Docker Compose puts all services on one network (`shinobi_default`) with a
 built-in DNS server: every **service name** is a hostname.
+```
+Docker creates DNS names from the compose file: each service's key, such as mediamtx: or cam-gate:, becomes a hostname on the project's network
+```
 
 MediaMTX logs from the start-up (real):
 
@@ -334,6 +337,13 @@ packets at 1440 bytes, so they still fit in a 1500-byte Ethernet frame for reade
 it re-splits the H.264 data into smaller fragments. The "reading" line is streamprobe connecting as a
 reader.
 
+What does “track” mean?
+
+- A track is one individual media stream inside a larger streaming session.
+- A stream can contain one or more tracks, such as video, audio, or subtitles.What does “track” mean?
+- e.g. 1 track (H264)
+- e.g. 1 track (H264, MPEG-4 Audio) -> One H.264 video track and one audio track
+
 ---
 
 ## 5. Two compose files merged
@@ -348,12 +358,33 @@ reader.
   resolve against it. That is why the generated file says `./media`, not `../media`:
   ```
   $ docker inspect shinobi-cam-gate-1 --format '{{range .Mounts}}{{.Source}}->{{.Destination}}{{end}}'
-  /home/abuahmad/git/shinobi/media->/clips      (read-only)
+    output: /home/user/git/shinobi/media->/clips      (read-only)
+
+    - docker inspect: retrieves detailed information about a Docker object, such as a container.
+    - shinobi-cam-gate-1: is the name of the container being inspected.
+    - --format '...': display only the information specified by a Go template,
+                     instead of printing the full inspection data as JSON.
+    - {{range .Mounts}}: loops through the container's .Mounts list
+    - {{.Source}}->{{.Destination}}: For each mount:
+      - .Source is the path on the host machine.
+      - .Destination is the path inside the container.
+      - -> is just a text separator chosen by whoever wrote the command.
+
+      "Mounts": [
+      {
+          "Type": "bind",
+          "Source": "/home/user/git/shinobi/media",
+          "Destination": "/clips",
+          "Mode": "ro",
+          "RW": false,
+          "Propagation": "rprivate"
+      }
   ```
 - **Container names** are `<project>-<service>-<n>`, e.g. `shinobi-cam-gate-1`. There is deliberately no
   `container_name:`. It would block `docker compose up --scale` and collide across projects.
 - **One image, four containers.** Every service has `image: shinobi-sim-camera:local` + `build: ./sim/camera`,
   so Compose builds once and tags the result. The cameras differ only in their `command`.
+  - build: Look in the sim/camera directory, relative to this YAML file, and use its Dockerfile/build instructions.
 - **Labels** let tools find cameras without knowing their names:
   ```
   $ docker ps --filter label=port.sim.role --format '{{.Names}}  role={{.Label "port.sim.role"}}'
@@ -361,6 +392,10 @@ reader.
   shinobi-cam-waterway-1  role=waterway
   shinobi-cam-quay-1  role=quay
   shinobi-cam-yard-1  role=yard
+
+  - docker ps: Lists currently running containers.
+  - {{.Names}}: Prints the container name.
+  - role={{.Label "port.sim.role"}}: Prints the value of the port.sim.role label, prefixed by role=.
   ```
 
 ---
@@ -373,6 +408,10 @@ PID     PPID    COMMAND
 260041  260017  /sbin/docker-init -- /usr/local/bin/publish.sh ffmpeg -hide_banner …
 260094  260041  bash /usr/local/bin/publish.sh ffmpeg -hide_banner …
 260096  260094  ffmpeg -hide_banner -loglevel warning -re -stream_loop -1 -i /clips/gate_santos_port.mp4 …
+
+shows the processes currently running inside the Docker container shinobi-cam-gate-1, including their process IDs, parent process IDs, and command-line arguments
+
+@note PID is in the host system
 ```
 
 ```
