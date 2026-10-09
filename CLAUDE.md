@@ -49,9 +49,9 @@ docker compose logs -f shinobi
 ffplay rtsp://localhost:8554/cam-gate
 mosquitto_sub -v -t 'shinobi/#' -t 'port/#'
 uv sync                              # create .venv (Python 3.14 pinned) + dev deps
-uv run pytest                        # all tests (unit + integration)
+uv run pytest                        # unit + integration (e2e deselected via addopts)
 uv run pytest -m "not integration"   # pure unit tests only
-uv run pytest -m e2e                 # end-to-end (needs running stack)
+uv run pytest -m e2e                 # end-to-end, e.g. tests/test_streams.py stream health (needs running stack)
 uv run python -m tools.streamprobe rtsp://localhost:8554/cam-gate --seconds 10 [--json]  # check stream conventions
 uvx ruff check . && uvx ruff format .
 uv run python -m tools.streamprobe rtsp://localhost:8554/cam-gate [--seconds N] [--json]
@@ -64,6 +64,7 @@ scripts/sim-up.sh                    # generate fleet from sim/cameras.yaml + st
 scripts/sim-down.sh                  # stop mediamtx and all cameras
 uv run python sim/gen_compose.py [--check]   # regenerate compose/cameras.generated.yml (--check: exit 1 if stale)
 sim/scripts/snapshot.sh rtsp://localhost:8554/cam-gate-sub [out.jpg]   # one JPEG; compare OSD clock with host UTC
+scripts/chaos.sh status|stop|start|crash|freeze|thaw|flap|netem|clear <cam> [args]   # fault injection (netem: e.g. loss 10%)
 ```
 Update this section when commands change.
 

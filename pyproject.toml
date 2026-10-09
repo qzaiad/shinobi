@@ -14,7 +14,8 @@ dev = ["pytest>=8"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = ["--import-mode=importlib", "--strict-markers"]
+# -m "not e2e": a plain `pytest` never needs the stack; `pytest -m e2e` overrides it.
+addopts = ["--import-mode=importlib", "--strict-markers", "-m", "not e2e"]
 markers = [
     "integration: needs local tools such as ffmpeg/ffprobe, no running stack",
     "e2e: needs the running docker compose stack",
