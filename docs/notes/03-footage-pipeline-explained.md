@@ -3,7 +3,7 @@
 How real port video gets into the project legally and reproducibly, without ever committing a video
 file. Which clips were chosen and why: [03-port-footage.md](03-port-footage.md).
 
-Commit: `1610a72 feat(sim): add port footage manifest and reproducible download script`.
+Commit: `0687bd4 feat(sim): add port footage manifest and reproducible download script`.
 
 ---
 

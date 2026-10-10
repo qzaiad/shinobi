@@ -4,7 +4,7 @@ One clip, looped forever by FFmpeg, published to an RTSP server, playable by any
 foundation every later session builds on. Also covers camera profile v1 (`normalize.sh` and
 `probe_clip.sh`), which was added during this session. All outputs are real.
 
-Commit: `5337555 feat(sim): stream first simulated camera via MediaMTX`.
+Commit: `551cb87 feat(sim): stream first simulated camera via MediaMTX`.
 Session 5 later replaced the hand-written service with a generated fleet; see
 [05-camera-fleet.md](05-camera-fleet.md).
 

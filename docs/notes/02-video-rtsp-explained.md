@@ -6,7 +6,7 @@ ffmpeg and a packet capture. Your questions and corrected answers are in
 All outputs below are real, from the files in `media/session2/` (test clips made with FFmpeg's
 `testsrc2` pattern) and from `rtsp.pcap`, the capture of that session.
 
-Commit: `a227534 feat(tools): add streamprobe ffprobe GOP and B-frame health check`.
+Commit: `f7b6a57 feat(tools): add streamprobe ffprobe GOP and B-frame health check`.
 
 ---
 

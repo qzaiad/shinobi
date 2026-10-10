@@ -1,7 +1,7 @@
 # Session 1 — Repo bootstrap
 
 What the project is, how the repository is organized, and the rules every later session follows.
-Commit: `f1e2269 chore: bootstrap repo structure, CLAUDE.md and learning plan`.
+Commit: `8dd32d6 chore: bootstrap repo structure, CLAUDE.md and learning plan`.
 
 ---
 
