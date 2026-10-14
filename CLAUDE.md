@@ -60,8 +60,11 @@ cp .env.example .env                 # once; sets MTX_TAG for compose
 sim/scripts/check_stream.sh rtsp://localhost:8554/cam-gate media/gate_santos_port.mp4  # DTS continuity across loop boundaries (~2.5x clip length)
 sim/scripts/normalize.sh media/raw/<clip> media/<clip>.mp4   # re-encode to the camera profile (docs/camera-profile.md)
 sim/scripts/probe_clip.sh media/<clip>.mp4                   # PASS/FAIL per profile check; exit 1 on any FAIL
-scripts/sim-up.sh                    # generate fleet from sim/cameras.yaml + start mediamtx and all cameras (main /cam-x + sub /cam-x-sub)
-scripts/sim-down.sh                  # stop mediamtx and all cameras
+scripts/sim-up.sh                    # generate fleet from sim/cameras.yaml, seed Shinobi config, start mediamtx + shinobi + all cameras (main /cam-x + sub /cam-x-sub)
+scripts/sim-down.sh                  # stop and remove them (volumes kept; never add -v: it wipes Shinobi accounts + recordings)
+scripts/shinobi-seed.sh              # once: data/shinobi/{conf,super}.json from the pinned image (called by sim-up.sh)
+docker compose exec shinobi mysql ccio -e 'show tables'   # look into Shinobi's built-in MariaDB (read only)
+uv run pytest -m e2e tests/test_shinobi.py   # Shinobi up, superuser password changed, admin account persists (needs .env creds)
 uv run python sim/gen_compose.py [--check]   # regenerate compose/cameras.generated.yml (--check: exit 1 if stale)
 sim/scripts/snapshot.sh rtsp://localhost:8554/cam-gate-sub [out.jpg]   # one JPEG; compare OSD clock with host UTC
 scripts/chaos.sh status|stop|start|crash|freeze|thaw|flap|netem|clear <cam> [args]   # fault injection (netem: e.g. loss 10%)
@@ -89,7 +92,8 @@ Update this section when commands change.
 - Each service has its own Dockerfile and is wired into compose.
 
 ## Shinobi facts and rules
-- Image: `registry.gitlab.com/shinobi-systems/shinobi:dev` (see ShinobiDocker on GitLab). UI on `:8080`, superuser panel at `/super`.
+- Image: `registry.gitlab.com/shinobi-systems/shinobi:dev`, pinned by digest (`SHINOBI_DIGEST` in `.env`), built-in MariaDB; only data is mounted (volumes `shinobi-db`, `shinobi-videos`, `data/shinobi/{conf,super}.json`). See `docs/adr/0001-shinobi-image-and-database.md`. UI on `127.0.0.1:8080`, superuser panel at `/super`.
+- `init.sh` rewrites `conf.json` keys `db`, `ssl`, `pluginKeys`, `subscriptionId`, `databaseType`, `cpuUsageMarker` from env on every start; keep `DB_PASSWORD` empty. Max 5 failed logins per IP, then 15 min lock.
 - API URLs follow `/[API_KEY]/<endpoint>/[GROUP_KEY]/[MONITOR_ID]`. Keys come from `.env`.
 - Events leave Shinobi via detector webhooks, MQTT outbound (`mqttClient` enabled in `conf.json`), the REST API, or WebSocket. The chosen primary transport is recorded in `docs/adr/`.
 - Monitor configs are provisioned from `sim/cameras.yaml` + `shinobi-config/` by `scripts/provision_monitors.py`; don't rely on hand-made UI changes — export them back to the repo.

@@ -8,3 +8,24 @@ services:
     ports:
       - "127.0.0.1:8554:8554/tcp"
     restart: unless-stopped
+
+  # Shinobi NVR with its built-in MariaDB (see docs/adr/0001-shinobi-image-and-database.md).
+  # Only data is persisted; the application stays in the image so a new digest really upgrades.
+  shinobi:
+    image: registry.gitlab.com/shinobi-systems/shinobi@${SHINOBI_DIGEST:?set SHINOBI_DIGEST in .env}
+    volumes:
+      - shinobi-db:/var/lib/mysql             # accounts, monitors, settings, event/video index
+      - shinobi-videos:/home/Shinobi/videos   # recordings
+      # Seeded by scripts/shinobi-seed.sh; must exist as files, or Docker creates directories.
+      - ./data/shinobi/conf.json:/home/Shinobi/conf.json
+      - ./data/shinobi/super.json:/home/Shinobi/super.json
+    tmpfs:
+      - /dev/shm/streams:size=512m            # live-view segments, RAM only
+    ports:
+      - "127.0.0.1:8080:8080/tcp"
+    stop_grace_period: 30s                    # MariaDB flush + PM2 kill_timeout 5 s
+    restart: unless-stopped
+
+volumes:
+  shinobi-db:
+  shinobi-videos:
