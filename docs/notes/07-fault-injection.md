@@ -92,7 +92,7 @@ E       Failed: cam-gate-sub: down: ... DESCRIBE failed: 404 Not Found   ← 10 
 
 (The test now checks the frame count first, so this reads `0 frames in 6 s` instead.)
 
-After `thaw`, ffmpeg's next write hits the socket that MediaMTX closed meanwhile, ffmpeg exits with
+After `thaw استئناف العمل`, ffmpeg's next write hits the socket that MediaMTX closed meanwhile, ffmpeg exits with
 code 1, and `publish.sh` reconnects:
 
 ```
@@ -133,6 +133,17 @@ The camera image is unprivileged and normally needs no `tc`. So `chaos.sh` start
  │  helper container (tc, NET_ADMIN, --rm)  │──▶ both see the same eth0 and its qdisc
  └──────────────────────────────────────────┘
 ```
+
+- --network container:<cam-id>	Shares the network namespace of the existing camera container. Replace <cam-id> with its container name or ID.
+- --cap-add NET_ADMIN	Grants the temporary container the Linux network-administration capability needed to change traffic-control settings.
+- --entrypoint tc	Runs the tc command instead of the image's normal entrypoint.
+- \<camera image>	The Docker image used to create the temporary container.
+- qdisc replace	Adds or replaces a queueing discipline, which controls how network packets are handled.
+- dev eth0	Targets the network interface named eth0.
+- root	Applies the queueing discipline to the root of that interface's outgoing traffic queue.
+- netem	Uses Linux's network-emulation feature.
+- loss 10%	Simulates a 10% packet-loss rate.
+
 
 No sudo on the host, nothing privileged left running, and the shaping disappears when the camera
 container is recreated (the namespace dies with it). `iproute2` was added to the camera image so the
