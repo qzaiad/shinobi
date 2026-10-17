@@ -278,6 +278,7 @@ Everything runs from one `docker compose` stack. Services talk only via MQTT top
 
 ### Session 35 — Retrospective & release
 - **Do:** Update README (architecture, quick start), clean up TODOs, tag `v0.1.0`.
+- **Also:** NVR choice for production: `docs/adr/0003-production-nvr.md` comparing Shinobi Pro, Frigate (MIT, single node, custom models via `model.path` + `labelmap_path`), ZoneMinder and a commercial VMS behind the same MQTT/schema contract. Criteria: license at port scale ([ADR 0002](adr/0002-shinobi-license.md)), multi-node scaling, recording/retention, custom port model support, operations effort; numbers from Sessions 16, 23 and 34. Optional time-boxed spike: Frigate on 2–4 cameras with the Session 23 model, adapter publishing our `Detection` schema.
 - **Done when:** Someone else could run and understand the project from the README.
 - **Commit:** `docs: finalize README for v0.1.0` (then `git tag -a v0.1.0`)
 
