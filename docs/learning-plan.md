@@ -271,6 +271,7 @@ Everything runs from one `docker compose` stack. Services talk only via MQTT top
 
 ### Session 34 — Scaling
 - **Learn:** Shinobi resource limits per monitor, detector plugins in cluster mode, MQTT topic fan-out, where C++ would pay off (detector, frame pipeline).
+- **License limit:** Shinobi stays at ≤ 14 active monitors (15 = commercial use and the unactivated cap, see [ADR 0002](adr/0002-shinobi-license.md)); scale the simulator/MediaMTX beyond that.
 - **Do:** Scale simulated fleet to 16 cameras via `cameras.yaml`; measure CPU/RAM/latency; `docs/notes/scaling.md` with bottlenecks and next steps.
 - **Done when:** You know the first bottleneck and its numbers.
 - **Commit:** `docs: add scaling measurements for 16 simulated cameras`
