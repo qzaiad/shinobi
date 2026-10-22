@@ -1,0 +1,24 @@
+[
+   {
+      "ke": "GROUP_KEY",
+      "mid": "cam_gate",
+      "info": {
+         "type": "Process Started",
+         "msg": {
+            "cmd": "-progress pipe:5 -analyzeduration 1000000000 -probesize 1000000000 -fflags +igndts -rtsp_transport tcp -loglevel warning -i \"rtsp://mediamtx:8554/cam-gate\" -strict -2 -fflags +genpts+igndts -muxdelay 0 -muxpreload 0 -an -c:v copy -f hls -hls_time 2 -hls_list_size 3 -start_number 0 -hls_allow_cache 0 -hls_flags +delete_segments+omit_endlist+discont_start \"/dev/shm/streams/GROUP_KEY/cam_gate/s.m3u8\"  -an -vcodec copy -preset veryfast -strict -2 -segment_format_options movflags=faststart -fflags +genpts+igndts -muxdelay 0 -muxpreload 0 -f segment -segment_atclocktime 1 -reset_timestamps 1 -strftime 1 -segment_list pipe:8 -segment_time 900 \"/home/Shinobi/videos/GROUP_KEY/cam_gate/%Y-%m-%dT%H-%M-%S.mp4\"    "
+         }
+      },
+      "time": "2026-10-22T12:31:30.000Z"
+   },
+   {
+      "ke": "GROUP_KEY",
+      "mid": "cam_gate",
+      "info": {
+         "type": "Process Started",
+         "msg": {
+            "cmd": "-progress pipe:5 -analyzeduration 1000000000 -probesize 1000000000 -fflags +igndts -rtsp_transport tcp -loglevel warning -i \"rtsp://mediamtx:8554/cam-gate\" -strict -2 -fflags +genpts+igndts -muxdelay 0 -muxpreload 0 -an -c:v copy -f hls -hls_time 2 -hls_list_size 3 -start_number 0 -hls_allow_cache 0 -hls_flags +delete_segments+omit_endlist+discont_start \"/dev/shm/streams/GROUP_KEY/cam_gate/s.m3u8\"  -an -vcodec copy -preset veryfast -strict -2 -segment_format_options movflags=faststart -fflags +genpts+igndts -muxdelay 0 -muxpreload 0 -f segment -segment_atclocktime 1 -reset_timestamps 1 -strftime 1 -segment_list pipe:8 -segment_time 900 \"/home/Shinobi/videos/GROUP_KEY/cam_gate/%Y-%m-%dT%H-%M-%S.mp4\"    "
+         }
+      },
+      "time": "2026-10-22T11:30:18.000Z"
+   }
+]

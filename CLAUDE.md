@@ -70,6 +70,8 @@ sim/scripts/snapshot.sh rtsp://localhost:8554/cam-gate-sub [out.jpg]   # one JPE
 scripts/shinobi-cpu.sh [SECONDS] [RUNS]   # CPU per Shinobi process + container total (cgroup), 100 % = 1 core
 scripts/chaos.sh status|stop|start|crash|freeze|thaw|flap|netem|clear <cam> [args]   # fault injection (netem: e.g. loss 10%)
 docker compose exec shinobi mysql ccio -N -B --raw -e "select time, json_value(info,'$.type'), json_value(info,'$.msg.cmd') from Logs where mid='cam_gate' order by time desc limit 5"   # ffmpeg command Shinobi generated
+uv run python -m services.common.shinobi_client monitors|videos [mid] [--limit N]|snapshot <mid> <out.jpg>   # read-only API client (.env key)
+uv run python scripts/record_shinobi_fixtures.py   # re-record tests/fixtures/shinobi/*.json (key/group redacted; aborts on any leak)
 ```
 Update this section when commands change.
 
@@ -96,7 +98,7 @@ Update this section when commands change.
 ## Shinobi facts and rules
 - Image: `registry.gitlab.com/shinobi-systems/shinobi:dev`, pinned by digest (`SHINOBI_DIGEST` in `.env`), built-in MariaDB; only data is mounted (volumes `shinobi-db`, `shinobi-videos`, `data/shinobi/{conf,super}.json`). See `docs/adr/0001-shinobi-image-and-database.md`. UI on `127.0.0.1:8080`, superuser panel at `/super`.
 - `init.sh` rewrites `conf.json` keys `db`, `ssl`, `pluginKeys`, `subscriptionId`, `databaseType`, `cpuUsageMarker` from env on every start; keep `DB_PASSWORD` empty. Max 5 failed logins per IP, then 15 min lock.
-- API URLs follow `/[API_KEY]/<endpoint>/[GROUP_KEY]/[MONITOR_ID]`. Keys come from `.env`.
+- API URLs follow `/[API_KEY]/<endpoint>/[GROUP_KEY]/[MONITOR_ID]`. Keys come from `.env`. A bad key or missing permission is HTTP 200 with `{"ok": false}` (or `[]`); check the body. Answers embed the key in URLs: redact before saving. See `docs/notes/11-shinobi-api.md`.
 - Events leave Shinobi via detector webhooks, MQTT outbound (`mqttClient` enabled in `conf.json`), the REST API, or WebSocket. The chosen primary transport is recorded in `docs/adr/`.
 - Monitor configs are provisioned from `sim/cameras.yaml` + `shinobi-config/` by `scripts/provision_monitors.py`; don't rely on hand-made UI changes — export them back to the repo.
 - **Shinobi docs and APIs change. Do not invent endpoints, config keys, payload fields or plugin names.** If unsure, say so and check https://docs.shinobi.video or the Shinobi source on GitLab, or inspect real payloads from the running instance.

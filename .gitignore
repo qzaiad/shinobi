@@ -11,8 +11,7 @@ media/*
 *.webm
 
 # Secrets
-.env
-.env.*
+.env*
 !.env.example
 
 # Python

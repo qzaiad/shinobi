@@ -1,0 +1,70 @@
+{
+   "ok": true,
+   "limit": "3",
+   "videos": [
+      {
+         "ke": "GROUP_KEY",
+         "mid": "cam_gate",
+         "ext": "mp4",
+         "size": 225191498,
+         "status": 1,
+         "archive": 0,
+         "objects": "",
+         "saveDir": null,
+         "time": "2026-10-22T12:45:00Z",
+         "end": "2026-10-22T13:00:00Z",
+         "details": {},
+         "filename": "2026-10-22T12-45-00.mp4",
+         "actionUrl": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-10-22T12-45-00.mp4",
+         "links": {
+            "deleteVideo": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-10-22T12-45-00.mp4/delete",
+            "changeToUnread": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-10-22T12-45-00.mp4/status/1",
+            "changeToRead": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-10-22T12-45-00.mp4/status/2"
+         },
+         "href": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-10-22T12-45-00.mp4"
+      },
+      {
+         "ke": "GROUP_KEY",
+         "mid": "cam_gate",
+         "ext": "mp4",
+         "size": 524336,
+         "status": 1,
+         "archive": 0,
+         "objects": "",
+         "saveDir": null,
+         "time": "2026-10-22T12:31:39Z",
+         "end": "2026-10-22T12:31:39Z",
+         "details": {},
+         "filename": "2026-10-22T12-31-39.mp4",
+         "actionUrl": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-10-22T12-31-39.mp4",
+         "links": {
+            "deleteVideo": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-10-22T12-31-39.mp4/delete",
+            "changeToUnread": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-10-22T12-31-39.mp4/status/1",
+            "changeToRead": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-10-22T12-31-39.mp4/status/2"
+         },
+         "href": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-10-22T12-31-39.mp4"
+      },
+      {
+         "ke": "GROUP_KEY",
+         "mid": "cam_gate",
+         "ext": "mp4",
+         "size": 204706466,
+         "status": 1,
+         "archive": 0,
+         "objects": "",
+         "saveDir": null,
+         "time": "2026-10-22T12:31:39Z",
+         "end": "2026-10-22T12:45:00Z",
+         "details": {},
+         "filename": "2026-10-22T12-31-39.mp4",
+         "actionUrl": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-10-22T12-31-39.mp4",
+         "links": {
+            "deleteVideo": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-10-22T12-31-39.mp4/delete",
+            "changeToUnread": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-10-22T12-31-39.mp4/status/1",
+            "changeToRead": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-10-22T12-31-39.mp4/status/2"
+         },
+         "href": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-10-22T12-31-39.mp4"
+      }
+   ],
+   "endIsStartTo": false
+}
