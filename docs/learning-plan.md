@@ -219,6 +219,7 @@ Everything runs from one `docker compose` stack. Services talk only via MQTT top
 ### Session 25 — Robustness
 - **Learn:** Reconnect strategies, backpressure, clock skew between camera overlay, Shinobi and evaluator, idempotency/dedup.
 - **Do:** Reconnect + backoff, event ids/dedup, Prometheus-style counters or structured logs. Run `scripts/chaos.sh` while the pipeline runs.
+  From Session 10: recordings survive a hard kill (fragmented MP4 instead of `faststart`?), graceful container stop that finalizes segments, audit trail for retention deletions (Shinobi deletes silently), client-side checks for unplayable or duplicate `Videos` rows.
 - **Done when:** Camera flapping doesn't produce false berth/queue state changes or crash services.
 - **Commit:** `fix(eval): harden pipeline against reconnects, duplicates and clock skew`
 

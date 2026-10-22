@@ -67,6 +67,7 @@ docker compose exec shinobi mysql ccio -e 'show tables'   # look into Shinobi's 
 uv run pytest -m e2e tests/test_shinobi.py   # Shinobi up, superuser password changed, admin account persists (needs .env creds)
 uv run python sim/gen_compose.py [--check]   # regenerate compose/cameras.generated.yml (--check: exit 1 if stale)
 sim/scripts/snapshot.sh rtsp://localhost:8554/cam-gate-sub [out.jpg]   # one JPEG; compare OSD clock with host UTC
+scripts/shinobi-cpu.sh [SECONDS] [RUNS]   # CPU per Shinobi process + container total (cgroup), 100 % = 1 core
 scripts/chaos.sh status|stop|start|crash|freeze|thaw|flap|netem|clear <cam> [args]   # fault injection (netem: e.g. loss 10%)
 docker compose exec shinobi mysql ccio -N -B --raw -e "select time, json_value(info,'$.type'), json_value(info,'$.msg.cmd') from Logs where mid='cam_gate' order by time desc limit 5"   # ffmpeg command Shinobi generated
 ```
