@@ -23,6 +23,7 @@ from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import parse_qs
 
 import httpx
 import pytest
@@ -30,6 +31,7 @@ import yaml
 
 from services.common.envfile import load_env
 from services.common.shinobi_client import (
+    MONITOR_COLUMNS,
     MonitorCode,
     ShinobiAuthError,
     ShinobiClient,
@@ -252,6 +254,83 @@ def test_config_repr_hides_api_key() -> None:
 def test_config_from_env_names_missing_variables() -> None:
     with pytest.raises(ShinobiError, match="SHINOBI_API_KEY"):
         ShinobiConfig.from_env({"SHINOBI_URL": "http://x", "SHINOBI_GROUP_KEY": "g"})
+
+
+def test_config_from_env_picks_the_edit_key() -> None:
+    env = {"SHINOBI_URL": "http://x", "SHINOBI_GROUP_KEY": "g", "SHINOBI_API_KEY": "read"}
+    with pytest.raises(ShinobiError, match="SHINOBI_EDIT_API_KEY"):
+        ShinobiConfig.from_env(env, key_var="SHINOBI_EDIT_API_KEY")
+    env["SHINOBI_EDIT_API_KEY"] = "edit"
+    edit = ShinobiConfig.from_env(env, key_var="SHINOBI_EDIT_API_KEY")
+    assert edit.api_key == "edit"
+
+
+# -- writes (configureMonitor) -------------------------------------------------------------------
+
+
+def edit_client(fake: FakeShinobi) -> ShinobiClient:
+    return client_with(fake, api_key="EDIT_API_KEY")
+
+
+def test_monitor_configs_returns_only_stored_columns() -> None:
+    fake = FakeShinobi({"/EDIT_API_KEY/monitor/GROUP_KEY": fixture("monitors_edit_key")})
+    configs = edit_client(fake).monitor_configs()
+    assert set(configs) == CAMERA_MONITORS
+    gate = configs["cam_gate"]
+    assert tuple(gate) == MONITOR_COLUMNS  # no status/code/streams (runtime) and no ke
+    assert (gate["host"], gate["port"], gate["path"]) == ("mediamtx", 8554, "/cam-gate")
+    assert gate["details"]["auto_host"] == "rtsp://mediamtx:8554/cam-gate"
+
+
+def test_monitor_configs_refuses_redacted_answer(client: ShinobiClient) -> None:
+    # The read-only key's answer has host/path blanked; provisioning from it would "fix" them.
+    with pytest.raises(ShinobiAuthError, match="Can Edit Monitors"):
+        client.monitor_configs()
+
+
+def _answer(body: dict[str, object]) -> Callable[[httpx.Request], httpx.Response]:
+    def handler(request: httpx.Request) -> httpx.Response:
+        handler.requests.append(request)  # type: ignore[attr-defined]
+        return httpx.Response(200, json=body)
+
+    handler.requests = []  # type: ignore[attr-defined]
+    return handler
+
+
+def test_save_monitor_posts_the_dashboard_wire_format() -> None:
+    # Answer text as seen in Session 9 (uid replaced).
+    handler = _answer({"ok": True, "msg": "Monitor Added by user. : USER_ID"})
+    config = {"mid": "cam_gate", "name": "cam-gate", "details": {"cutoff": 15}}
+    msg = client_with(handler, api_key="EDIT_API_KEY").save_monitor(config)
+    assert msg.startswith("Monitor Added")
+    (req,) = handler.requests  # type: ignore[attr-defined]
+    assert req.method == "POST"
+    assert req.url.path == "/EDIT_API_KEY/configureMonitor/GROUP_KEY/cam_gate"
+    form = parse_qs(req.content.decode())
+    assert json.loads(form["data"][0]) == config
+
+
+def test_save_monitor_failure_is_raised() -> None:
+    handler = _answer({"ok": False, "msg": "You must activate your installation"})
+    with pytest.raises(ShinobiError, match="activate"):
+        client_with(handler).save_monitor({"mid": "cam_x", "name": "x", "details": {}})
+
+
+def test_save_monitor_without_edit_permission_is_an_auth_error() -> None:
+    handler = _answer({"ok": False, "msg": "Not Authorized"})
+    with pytest.raises(ShinobiAuthError):
+        client_with(handler).save_monitor({"mid": "cam_x", "name": "x", "details": {}})
+
+
+def test_delete_monitor_keeps_recordings_by_default() -> None:
+    handler = _answer({"ok": True, "msg": "Monitor Deleted by user : USER_ID"})
+    client = client_with(handler)
+    client.delete_monitor("cam_gate")
+    client.delete_monitor("cam_gate", delete_files=True)
+    keep, wipe = handler.requests  # type: ignore[attr-defined]
+    assert keep.url.path == "/API_KEY/configureMonitor/GROUP_KEY/cam_gate/delete"
+    assert "deleteFiles" not in keep.url.params  # Shinobi: only "true" deletes files
+    assert wipe.url.params["deleteFiles"] == "true"
 
 
 # -- live -----------------------------------------------------------------------------------------

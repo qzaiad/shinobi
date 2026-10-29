@@ -71,6 +71,8 @@ scripts/shinobi-cpu.sh [SECONDS] [RUNS]   # CPU per Shinobi process + container 
 scripts/chaos.sh status|stop|start|crash|freeze|thaw|flap|netem|clear <cam> [args]   # fault injection (netem: e.g. loss 10%)
 docker compose exec shinobi mysql ccio -N -B --raw -e "select time, json_value(info,'$.type'), json_value(info,'$.msg.cmd') from Logs where mid='cam_gate' order by time desc limit 5"   # ffmpeg command Shinobi generated
 uv run python -m services.common.shinobi_client monitors|videos [mid] [--limit N]|snapshot <mid> <out.jpg>   # read-only API client (.env key)
+uv run python scripts/provision_monitors.py plan|apply [--prune]   # monitors from cameras.yaml + shinobi-config/ (edit key); plan exit 2 = changes pending
+uv run python scripts/provision_monitors.py render [--check]|export [--out DIR]   # desired files in shinobi-config/monitors/ | live configs as files
 uv run python scripts/record_shinobi_fixtures.py   # re-record tests/fixtures/shinobi/*.json (key/group redacted; aborts on any leak)
 ```
 Update this section when commands change.

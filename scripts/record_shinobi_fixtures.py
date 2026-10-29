@@ -42,6 +42,11 @@ REQUESTS: dict[str, str] = {
     "videos_cam_gate": "videos/{ke}/cam_gate?limit=3",
     "logs_cam_gate": "logs/{ke}/cam_gate?limit=2",
 }
+# Recorded with SHINOBI_EDIT_API_KEY (Get + Edit Monitors): the unredacted stored configs that
+# scripts/provision_monitors.py compares against. Skipped when that key is not set.
+EDIT_KEY_REQUESTS: dict[str, str] = {
+    "monitors_edit_key": "monitor/{ke}",
+}
 BAD_KEY = "not-a-valid-api-key"  # for the "Not Authorized" fixture (does not count as a login)
 
 
@@ -51,6 +56,8 @@ def secrets_from(env: dict[str, str]) -> dict[str, str]:
         env["SHINOBI_API_KEY"]: "API_KEY",
         env["SHINOBI_GROUP_KEY"]: "GROUP_KEY",
     }
+    if env.get("SHINOBI_EDIT_API_KEY"):
+        out[env["SHINOBI_EDIT_API_KEY"]] = "EDIT_API_KEY"
     if env.get("SHINOBI_UID"):
         out[env["SHINOBI_UID"]] = "USER_ID"
     # Never expected in API answers, but if one shows up, abort instead of committing it.
@@ -83,6 +90,11 @@ def main() -> int:
     with httpx.Client(base_url=env["SHINOBI_URL"], timeout=10) as client:
         for name, path in REQUESTS.items():
             r = client.get(f"/{key}/{path.format(ke=ke)}")
+            r.raise_for_status()
+            texts[name] = r.text
+        edit_key = env.get("SHINOBI_EDIT_API_KEY")
+        for name, path in EDIT_KEY_REQUESTS.items() if edit_key else ():
+            r = client.get(f"/{edit_key}/{path.format(ke=ke)}")
             r.raise_for_status()
             texts[name] = r.text
         r = client.get(f"/{BAD_KEY}/monitor/{ke}")

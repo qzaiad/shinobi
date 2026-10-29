@@ -1,4 +1,4 @@
-"""Typed client for Shinobi's HTTP API (read-only part).
+"""Typed client for Shinobi's HTTP API.
 
     uv run python -m services.common.shinobi_client monitors
     uv run python -m services.common.shinobi_client videos [MONITOR_ID] [--limit N]
@@ -6,7 +6,9 @@
 
 Every endpoint is GET /<api key>/<endpoint>/<group key>[/<monitor id>] on Shinobi's web port
 (routes in libs/webServerPaths.js and libs/webServerStreamPaths.js, auth in libs/auth.js).
-Explained in docs/notes/11-shinobi-api.md. The traps this module exists to hide:
+Writes (add/edit/delete monitor) go through configureMonitor (libs/webServerAdminPaths.js) and
+need a key with "Can Edit Monitors". Explained in docs/notes/11-shinobi-api.md and
+docs/notes/12-monitors-as-code.md. The traps this module exists to hide:
 
     1. A wrong key or a missing permission is HTTP 200 with {"ok": false, "msg": ...}, so the
        status code says nothing; the body is checked on every call (ShinobiAuthError).
@@ -24,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import enum
+import json
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -36,6 +39,14 @@ import httpx
 from services.common.envfile import load_env
 
 JPEG_MAGIC = b"\xff\xd8"  # every JPEG starts with the SOI marker FF D8
+
+# The columns of the Monitors table that a save stores (libs/monitor.js
+# cleanMonitorObjectForDatabase, minus the group key `ke`). Everything else in a GET /monitor
+# answer (status, code, streams, currentlyWatching, ...) is runtime state built per request.
+MONITOR_COLUMNS = (
+    "mid", "name", "type", "ext", "protocol", "host", "path", "port",
+    "fps", "mode", "saveDir", "tags", "width", "height", "details",
+)  # fmt: skip
 
 
 class MonitorCode(enum.IntEnum):
@@ -77,14 +88,15 @@ class ShinobiConfig:
     uid: str = ""  # only needed for the WebSocket login
 
     @classmethod
-    def from_env(cls, env: Mapping[str, str]) -> Self:
-        names = ("SHINOBI_URL", "SHINOBI_API_KEY", "SHINOBI_GROUP_KEY")
+    def from_env(cls, env: Mapping[str, str], *, key_var: str = "SHINOBI_API_KEY") -> Self:
+        """key_var picks the key: SHINOBI_API_KEY (read-only) or SHINOBI_EDIT_API_KEY."""
+        names = ("SHINOBI_URL", key_var, "SHINOBI_GROUP_KEY")
         missing = [n for n in names if not env.get(n)]
         if missing:
             raise ShinobiError(f"missing configuration: {', '.join(missing)}")
         return cls(
             url=env["SHINOBI_URL"].rstrip("/"),
-            api_key=env["SHINOBI_API_KEY"],
+            api_key=env[key_var],
             group_key=env["SHINOBI_GROUP_KEY"],
             uid=env.get("SHINOBI_UID", ""),
         )
@@ -201,7 +213,11 @@ class LogEntry:
 
 
 class ShinobiClient:
-    """Read-only Shinobi API client; one pooled HTTP connection set per instance.
+    """Shinobi API client; one pooled HTTP connection set per instance.
+
+    What it may do is decided by the key's permissions, not by this class: the read methods
+    work with the read-only key, monitor_configs/save_monitor/delete_monitor need "Can Edit
+    Monitors" (Shinobi answers {"ok": false, "msg": "Not Authorized"} otherwise).
 
     Use as a context manager (closes the connection pool):
 
@@ -236,14 +252,26 @@ class ShinobiClient:
     def _redact(self, text: str) -> str:
         return text.replace(self.config.api_key, "<api-key>")
 
-    def _get(self, path: str, params: Mapping[str, str] | None = None) -> httpx.Response:
+    def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Mapping[str, str] | None = None,
+        data: Mapping[str, str] | None = None,
+        timeout: float | None = None,
+    ) -> httpx.Response:
+        extra: dict[str, Any] = {} if timeout is None else {"timeout": timeout}
         try:
-            r = self._http.get(path, params=params)
+            r = self._http.request(method, path, params=params, data=data, **extra)
         except httpx.HTTPError as exc:  # connect/read errors; message may contain the URL
             raise ShinobiError(f"{type(exc).__name__}: {self._redact(str(exc))}") from None
         if r.is_error:
-            raise ShinobiError(f"HTTP {r.status_code} for GET {self._redact(path)}")
+            raise ShinobiError(f"HTTP {r.status_code} for {method} {self._redact(path)}")
         return r
+
+    def _get(self, path: str, params: Mapping[str, str] | None = None) -> httpx.Response:
+        return self._request("GET", path, params=params)
 
     @staticmethod
     def _check(body: Any) -> Any:
@@ -305,6 +333,45 @@ class ShinobiClient:
         """
         path = self._path("logs", mid) if mid else self._path("logs")
         return [LogEntry.from_api(e) for e in self._get_json(path, {"limit": str(limit)})]
+
+    def monitor_configs(self) -> dict[str, dict[str, Any]]:
+        """Stored configuration of every monitor: mid -> {MONITOR_COLUMNS}, as Shinobi keeps it.
+
+        Needs "Can Edit Monitors": without it Shinobi blanks host/path/port, auto_host and
+        credentials (removeSenstiveInfoFromMonitorConfig), which this method refuses to return
+        rather than hand out a config that looks like "camera address deleted".
+        """
+        configs: dict[str, dict[str, Any]] = {}
+        for raw in self._get_json(self._path("monitor")):
+            if raw.get("host") == "" and raw.get("protocol") == "":
+                raise ShinobiAuthError(
+                    f"monitor {raw['mid']!r} came back redacted: the key lacks Can Edit Monitors"
+                )
+            configs[raw["mid"]] = {c: raw.get(c) for c in MONITOR_COLUMNS}
+        return configs
+
+    def save_monitor(self, config: Mapping[str, Any]) -> str:
+        """Add the monitor config["mid"] or replace its configuration (an upsert); returns
+        Shinobi's message ("Monitor Added by user..." / "Monitor Updated by user...").
+
+        Shinobi restarts the monitor's FFmpeg on every save (a gap of a few seconds in the
+        recording) and ffprobes the camera first, so a save takes >= 2 s. Callers that want
+        idempotency must compare before saving (scripts/provision_monitors.py).
+        """
+        path = self._path("configureMonitor", config["mid"])
+        # Same wire format as the dashboard's Save button: form field `data` = the JSON text.
+        r = self._request("POST", path, data={"data": json.dumps(config)}, timeout=30.0)
+        body = self._check(r.json())
+        if not body.get("ok"):  # e.g. max monitors reached: ok false without "Not Authorized"
+            raise ShinobiError(str(body.get("msg") or "save failed"))
+        return str(body.get("msg", ""))
+
+    def delete_monitor(self, mid: str, *, delete_files: bool = False) -> None:
+        """Stop and delete a monitor. Recordings (Videos rows + files) are kept unless
+        delete_files is set; a monitor created again with the same mid sees them again."""
+        params = {"deleteFiles": "true"} if delete_files else None
+        r = self._request("GET", self._path("configureMonitor", mid, "delete"), params=params)
+        self._check(r.json())
 
     def stream_url(self, mid: str, kind: str = "hls") -> str:
         """Absolute live-stream URL as Shinobi builds it (libs/monitor/utils.js getStreamUrl).
