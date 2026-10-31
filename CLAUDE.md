@@ -38,7 +38,7 @@ services/twin-state/
 twin/model/               port.yaml (layout, zones, cameras)
 viewer/                   3D visualization
 tests/                    pytest; fixtures in tests/fixtures/
-docs/                     learning-plan.md, progress.md, notes/, adr/, schema/
+docs/                     learning-plan.md, progress.md, nvr-insights.md, notes/, adr/, schema/
 ```
 Create folders only when a session needs them.
 
@@ -85,6 +85,7 @@ Update this section when commands change.
   3. propose a commit message in **Conventional Commits** format (`feat|fix|docs|test|chore|refactor(scope): subject`, subject ≤ 72 chars, imperative; body explains what and why),
   4. commit after the developer confirms.
 - Append a line to `docs/progress.md` (date, session, short note) as part of the same commit.
+- When a step adds or changes a note in `docs/notes/` (not `*-explained.md`), update `docs/nvr-insights.md` (own-NVR insights with note references; procedure at its top) in the same commit.
 - Never `push --force`, rewrite history, or push without being asked.
 - Never commit: media files, recordings, `.env`, API keys, group keys, passwords, database dumps.
 - Never put the local OS username in a committed or published file: write home paths as `/home/username/...` (also in pasted command output).
