@@ -1,0 +1,12 @@
+{
+  "$user": {
+    "mail": "super@example.com",
+    "pass": "PASSWORD_HASH",
+    "tokens": [],
+    "usingDefaultPassword": false,
+    "sessionKey": "SESSION_KEY"
+  },
+  "currentVersion": "637551223a00914b321e472d5ef5d0f1b9422c94",
+  "timezone": "UTC",
+  "ok": true
+}

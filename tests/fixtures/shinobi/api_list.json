@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "keys": [
+    {
+      "ke": "GROUP_KEY",
+      "uid": "USER_ID",
+      "ip": "0.0.0.0",
+      "code": "API_KEY",
+      "details": {
+        "treatAsSub": "0",
+        "permissionSet": "",
+        "monitorsRestricted": "0",
+        "auth_socket": "1",
+        "create_api_keys": "0",
+        "edit_user": "1",
+        "edit_permissions": "0",
+        "get_monitors": "1",
+        "edit_monitors": "0",
+        "control_monitors": "0",
+        "get_logs": "1",
+        "watch_stream": "1",
+        "watch_snapshot": "1",
+        "watch_videos": "1",
+        "delete_videos": "0",
+        "get_alarms": "1",
+        "edit_alarms": "0",
+        "monitorPermissions": {}
+      },
+      "time": "2026-10-22T12:51:12.000Z"
+    },
+    {
+      "ke": "GROUP_KEY",
+      "uid": "USER_ID",
+      "ip": "0.0.0.0",
+      "code": "EDIT_API_KEY",
+      "details": {
+        "treatAsSub": "0",
+        "permissionSet": "",
+        "monitorsRestricted": "0",
+        "auth_socket": "0",
+        "create_api_keys": "0",
+        "edit_user": "0",
+        "edit_permissions": "0",
+        "get_monitors": "1",
+        "edit_monitors": "1",
+        "control_monitors": "0",
+        "get_logs": "0",
+        "watch_stream": "0",
+        "watch_snapshot": "0",
+        "watch_videos": "0",
+        "delete_videos": "0",
+        "get_alarms": "0",
+        "edit_alarms": "0",
+        "monitorPermissions": {}
+      },
+      "time": "2026-10-29T14:09:51.000Z"
+    }
+  ],
+  "uid": "USER_ID",
+  "ke": "GROUP_KEY"
+}

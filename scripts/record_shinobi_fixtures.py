@@ -16,6 +16,13 @@ hit aborts the whole run.
 
 Plain httpx on purpose (not services.common.shinobi_client): fixtures must show the wire
 format, independent of how the client parses it.
+
+Session answers (scripts/shinobi_bootstrap.py, recorded when the superuser/admin credentials are
+in .env) carry more secrets: the superuser session key and password HASH (`$user.pass` is sent
+back on every /super login), the admin auth_token, each account's `auth` value and the e-mails.
+They are replaced field by field (scrub_session), the e-mails by example addresses, and the
+`lang`/`define` UI tables (~100 kB, unused) are dropped. Every replaced value also joins the leak
+check.
 """
 
 from __future__ import annotations
@@ -23,6 +30,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -47,6 +55,8 @@ REQUESTS: dict[str, str] = {
 EDIT_KEY_REQUESTS: dict[str, str] = {
     "monitors_edit_key": "monitor/{ke}",
 }
+# Recorded with the superuser and admin logins from .env (see scrub_session).
+SESSION_FIXTURES = ("super_login", "accounts_list", "admin_login", "api_list")
 BAD_KEY = "not-a-valid-api-key"  # for the "Not Authorized" fixture (does not count as a login)
 
 
@@ -60,6 +70,10 @@ def secrets_from(env: dict[str, str]) -> dict[str, str]:
         out[env["SHINOBI_EDIT_API_KEY"]] = "EDIT_API_KEY"
     if env.get("SHINOBI_UID"):
         out[env["SHINOBI_UID"]] = "USER_ID"
+    if env.get("SHINOBI_ADMIN_EMAIL"):
+        out[env["SHINOBI_ADMIN_EMAIL"]] = "admin@example.com"
+    if env.get("SHINOBI_SUPER_EMAIL"):
+        out[env["SHINOBI_SUPER_EMAIL"]] = "super@example.com"
     # Never expected in API answers, but if one shows up, abort instead of committing it.
     for name, value in env.items():
         if name.startswith("SHINOBI_") and name.endswith(("PASSWORD", "EMAIL")) and value:
@@ -75,6 +89,40 @@ def redact(text: str, secrets: dict[str, str]) -> str:
     if leaked:
         raise SystemExit(f"refusing to write fixtures: still contains {leaked}")
     return text
+
+
+def scrub_session(body: dict[str, Any], secrets: dict[str, str]) -> dict[str, Any]:
+    """Drop the UI tables, replace session secrets by placeholders (also added to `secrets`)."""
+    body = {k: v for k, v in body.items() if k not in ("lang", "define")}
+    placeholders = {"sessionKey": "SESSION_KEY", "auth_token": "AUTH_TOKEN",
+                    "pass": "PASSWORD_HASH", "auth": "ACCOUNT_AUTH"}  # fmt: skip
+    users = [body.get("$user")] + list(body.get("users") or [])
+    for user in (u for u in users if isinstance(u, dict)):
+        for name, placeholder in placeholders.items():
+            if user.get(name):
+                secrets.setdefault(str(user[name]), placeholder)
+                user[name] = placeholder
+        if user.get("tokens"):
+            user["tokens"] = ["SUPER_TOKEN"] * len(user["tokens"])
+    return body
+
+
+def record_sessions(
+    client: httpx.Client, env: dict[str, str], secrets: dict[str, str]
+) -> dict[str, str]:
+    """Answers the bootstrap parses; two logins with the .env credentials (never wrong ones)."""
+    out: dict[str, Any] = {}
+    out["super_login"] = client.post("/super", params={"json": "true"}, data={
+        "mail": env["SHINOBI_SUPER_EMAIL"], "pass": env["SHINOBI_SUPER_PASSWORD"],
+        "function": "super"}).json()  # fmt: skip
+    sk = out["super_login"]["$user"]["sessionKey"]
+    out["accounts_list"] = client.get(f"/super/{sk}/accounts/list").json()
+    out["admin_login"] = client.post("/", params={"json": "true"}, data={
+        "mail": env["SHINOBI_ADMIN_EMAIL"], "pass": env["SHINOBI_ADMIN_PASSWORD"],
+        "function": "dash"}).json()  # fmt: skip
+    user = out["admin_login"]["$user"]
+    out["api_list"] = client.get(f"/{user['auth_token']}/api/{user['ke']}/list").json()
+    return {name: json.dumps(scrub_session(body, secrets), indent=2) for name, body in out.items()}
 
 
 def main() -> int:
@@ -100,6 +148,11 @@ def main() -> int:
         r = client.get(f"/{BAD_KEY}/monitor/{ke}")
         r.raise_for_status()
         texts["not_authorized"] = r.text
+        if all(
+            env.get(f"SHINOBI_{w}")
+            for w in ("SUPER_EMAIL", "SUPER_PASSWORD", "ADMIN_EMAIL", "ADMIN_PASSWORD")
+        ):
+            texts |= record_sessions(client, env, secrets)
 
     # Redact everything first, write only if ALL files are clean (no half-written set).
     clean = {name: redact(text, secrets) for name, text in texts.items()}

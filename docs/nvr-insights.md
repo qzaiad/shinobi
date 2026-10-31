@@ -17,7 +17,7 @@ Line numbers are from the commit that last updated the bullet; if a note was edi
 | 05 | notes/05-camera-fleet.md | 12 | notes/12-monitors-as-code.md |
 | 06 | notes/06-realism.md | CP | camera-profile.md |
 | 07 | notes/07-fault-injection.md | A1, A2 | adr/0001-…, adr/0002-… |
-| LP | learning-plan.md | | |
+| LP | learning-plan.md | 13 | notes/13-shinobi-cheatsheet.md |
 
 **[+]** = my addition, not observed in a note (best practice or inference). Verify before relying on it.
 
@@ -26,7 +26,7 @@ Line numbers are from the commit that last updated the bullet; if a note was edi
 2. Mark bullets a new finding contradicts or resolves (`~~old~~ → see [13 §x]`), don't delete them silently.
 3. Add the note to the coverage table and a line to the changelog at the bottom.
 
-**Coverage.** Ingested: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, CP, A1, A2, theory/.
+**Coverage.** Ingested: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, CP, A1, A2, theory/.
 Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 
 ---
@@ -47,6 +47,7 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - **Telling "camera down" apart from "nothing happening"**, so downstream logic doesn't conclude an empty yard. [07 §1 L34](notes/07-fault-injection.md#L34)
 - **Multi-tenant:** groups, users with permissions, service API keys. [08 §7 L229](notes/08-shinobi-install.md#L229), [11 §2 L53](notes/11-shinobi-api.md#L53)
 - **Monitors as code:** declarative config, plan/apply, drift report. [12 §6 L213](notes/12-monitors-as-code.md#L213)
+- **Disaster recovery:** rebuild accounts, keys and cameras from config after losing the DB, and re-adopt existing recordings. [13 §7 L272](notes/13-shinobi-cheatsheet.md#L272), [13 §7.2 L319](notes/13-shinobi-cheatsheet.md#L319)
 - **Timelapse** frames per camera. [09 §4 L147](notes/09-shinobi-monitor.md#L147)
 - **[+]** Audit trail: who viewed, exported or deleted which footage (hinted by Shinobi's silent deletes, [10 L443](notes/10-recording-storage.md#L443)).
 - **[+]** Clock/NTP health per camera and per server, since evidence depends on it.
@@ -113,6 +114,10 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - Deleting a camera keeps its files by default, and re-creating the same id brings old footage back. [12 §3 L92](notes/12-monitors-as-code.md#L92)
 - A fixed 2 s wait + ffprobe per save makes bulk provisioning O(n). [12 §4 L111](notes/12-monitors-as-code.md#L111), [12 §9 L323](notes/12-monitors-as-code.md#L323)
 - Different UI paths store different defaults for the same field (`null` vs `0`, 10⁹ vs 10⁶ probesize), so drift stays invisible until it is diffed. [12 §6 L244-266](notes/12-monitors-as-code.md#L244)
+- **Type coercion breaks the server's own checks:** `"1"` is stored as `1`, code tests `=== '1'`, so the setting can't be switched on (only the double-encoded `"\"1\""` works). [13 §4.1 L149](notes/13-shinobi-cheatsheet.md#L149)
+- **Server-generated identifiers can't be set by the client** (user id, API key codes): a rebuild produces new credentials that every client must be given. Allow client-chosen ids or an import path. [13 §2 L76](notes/13-shinobi-cheatsheet.md#L76)
+- Defaults of new objects differ from older ones (new accounts get remote access on), so "recreate" ≠ "restore". [13 §6 L264](notes/13-shinobi-cheatsheet.md#L264)
+- Backup import is insert-if-absent and answers `ok` either way, so it is not a sync. [13 §5.2 L217](notes/13-shinobi-cheatsheet.md#L217)
 
 ### 2.7 Operations and processes
 - PID 1: without an init, zombie ffmpeg processes pile up and SIGTERM is ignored. [08 §2 L75-89](notes/08-shinobi-install.md#L75), [05 §6 L476](notes/05-camera-fleet.md#L476)
@@ -126,17 +131,23 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - CPU numbers vary 2× with laptop power profile / P- vs E-cores. Use cgroup counters, control groups, ≥ 3 runs. [10 §7 L373-378](notes/10-recording-storage.md#L373)
 - A killed ffprobe loses its buffered output. Let tools stop themselves (`-read_intervals`). [04 §6 L242-247](notes/04-first-rtsp-camera.md#L242)
 - Docker DNS: `localhost` inside a container is the container itself, so use service names. [09 §2 L70](notes/09-shinobi-monitor.md#L70)
+- **Recordings without an index row are invisible and never purged;** Shinobi adopts them only in a sweep at boot, for cameras that exist then. The sweep also adopts files still being written → two rows per file → purge `ENOENT` later. Reconcile disk ↔ index continuously, keyed by file, not at boot. [13 §7.2 L319](notes/13-shinobi-cheatsheet.md#L319)
+- **The NVR's log hides stream-health symptoms** (`RTP: missed`, `Non-monotonous DTS`, `bad cseq` dropped). Count loss/timestamp errors as metrics. [13 §4.2 L182](notes/13-shinobi-cheatsheet.md#L182)
+- Four log destinations (live socket, per-camera DB log only for whitelisted types, system log, stdout): pick one structured log with levels. [13 §4 L122](notes/13-shinobi-cheatsheet.md#L122)
+- Locked-out logins answer exactly like wrong passwords, so tools can't tell them apart. [13 §2 L74](notes/13-shinobi-cheatsheet.md#L74)
 
 ## 3. Security considerations
 
 - **Keys in URL paths leak** (proxy logs, shell history, `Referer`, client debug logs, and in the server's own answers). Use an `Authorization` header plus short-lived signed URLs for `<video>`/`<img>`. [11 §2 L62](notes/11-shinobi-api.md#L62), [11 §5 L192-204](notes/11-shinobi-api.md#L192)
 - **API keys stored in plain text** (a DB dump leaks every key). Store hashes. [11 §2 L72](notes/11-shinobi-api.md#L72)
 - **IP allowlists must not trust `X-Forwarded-For` or match substrings.** Trust proxy headers only from known proxies. [11 §3 L97](notes/11-shinobi-api.md#L97)
-- **Revocation must be immediate:** a deleted key may keep working from cache until restart. [11 §3 L95](notes/11-shinobi-api.md#L95)
+- **Revocation must be immediate:** ~~a deleted key may keep working from cache until restart~~ → measured: delete/permission change via API act at once; only out-of-band (SQL) deletes stay cached. Invalidate caches on every write path. [11 §3 L95](notes/11-shinobi-api.md#L95), [13 §2 L77](notes/13-shinobi-cheatsheet.md#L77)
 - **Camera credentials leak through logs** (the full ffmpeg command with `rtsp://user:pass@`). Redact on every path, not only some. [11 §4 L149-153](notes/11-shinobi-api.md#L149), [09 §5.1 L257](notes/09-shinobi-monitor.md#L257)
 - Don't write the whole server config into temp files for child processes (the 33 KB cmd file with `conf.json`). [09 §3 L101](notes/09-shinobi-monitor.md#L101)
 - **WebSocket over-broadcasts:** account details and e-mail go to every socket of the group, even a single-camera API key. Authorize per message/room. [11 §7 L288](notes/11-shinobi-api.md#L288)
-- The login response contains the password hash. Never return or log credential material. [08 §8 L259](notes/08-shinobi-install.md#L259)
+- The login response contains the password hash (admin and superuser). Never return or log credential material. [08 §8 L259](notes/08-shinobi-install.md#L259), [13 §2 L79](notes/13-shinobi-cheatsheet.md#L79)
+- **Backups are secrets:** Shinobi's export holds password hashes and API keys in plain text. Encrypt backups, never put them in git. [13 §5.2 L217](notes/13-shinobi-cheatsheet.md#L217)
+- UI defaults over-grant: the "read-only" key could edit the account; new accounts enable cloud remote access. Default to least privilege. [13 §2 L88](notes/13-shinobi-cheatsheet.md#L88), [13 §6 L264](notes/13-shinobi-cheatsheet.md#L264)
 - A default superuser `admin/admin` → force a change on first start (expose `usingDefaultPassword`-style check). [08 §3 L104](notes/08-shinobi-install.md#L104), [08 §8 L254](notes/08-shinobi-install.md#L254)
 - DB with empty password, listening on all interfaces, protected only by account host rules. Use real credentials and a network policy. [08 §6 L210-221](notes/08-shinobi-install.md#L210), [A1 L46-50](adr/0001-shinobi-image-and-database.md#L46)
 - Rate-limit logins per account + IP, persist the lock, and keep API-auth failures counted too (Shinobi doesn't count them). [08 §8 L256](notes/08-shinobi-install.md#L256), [11 §3 L102](notes/11-shinobi-api.md#L102)
@@ -200,6 +211,8 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - `plan` / `apply` / `export`, exit code 2 = changes pending, change only what differs. [12 §6 L213-241](notes/12-monitors-as-code.md#L213)
 - Validation errors name the camera, not a list index. [05 §3 L150-163](notes/05-camera-fleet.md#L150)
 - Strict types (`StrictBool`), schema `version` field, reject old versions explicitly. [06 §3 L151-152](notes/06-realism.md#L151)
+- Accounts and API keys as code too (permissions in git, generated secrets written back to the env file atomically, 0600). [13 §6 L245](notes/13-shinobi-cheatsheet.md#L245)
+- Three layers: config (git) · secrets (env/secret store) · history (backups). Only the first is rebuildable from the repo. [13 §5.1 L191](notes/13-shinobi-cheatsheet.md#L191)
 
 ### 4.6 Testing
 - Three speeds: unit / integration (needs ffmpeg) / e2e (needs stack, opt-in so a missing stack fails loudly). [01 §7 L208-214](notes/01-repo-bootstrap.md#L208), [07 §5 L245](notes/07-fault-injection.md#L245)
@@ -210,6 +223,7 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - DTS continuity check across loop seams (strictly increasing, max gap). [04 §6 L208-238](notes/04-first-rtsp-camera.md#L208)
 - Crash-safety tests: `kill -9` the recorder, restart the container, then check the files play and the index is correct. [10 §3.4 L200](notes/10-recording-storage.md#L200)
 - Idempotency test: second apply → 0 changes, 0 restarts; export byte-identical. [12 §7 L268-294](notes/12-monitors-as-code.md#L268)
+- **Rebuild drill** (wipe DB → rebuild → e2e → second plan = 0) as a recurring test; it found a CLI bug unit tests could not. Test the documented command lines too. [13 §7.1 L289](notes/13-shinobi-cheatsheet.md#L289)
 - Resource benchmarks with cgroup CPU counters, ≥ 3 runs, control group. [10 §7 L368-387](notes/10-recording-storage.md#L368)
 - **[+]** Property tests for the index/retention logic (random segment streams, crashes, clock jumps).
 
@@ -260,7 +274,8 @@ P0 = must work before anything else; each step has a "done when".
 - Does fragmented MP4 work with thumbnails, faststart and the browser player? [10 Open L456](notes/10-recording-storage.md#L456)
 - Can a graceful shutdown finalize all open segments? [10 Open L459](notes/10-recording-storage.md#L459)
 - One-time 870/930 frame split after switching to camera timestamps: cause unknown. [10 §6 L363](notes/10-recording-storage.md#L363)
-- Does a deleted key keep working until restart (cache)? [11 §9 L344](notes/11-shinobi-api.md#L344), [12 §9 L322](notes/12-monitors-as-code.md#L322)
+- ~~Does a deleted key keep working until restart (cache)?~~ → no, via API it stops at once. [11 §9 L344](notes/11-shinobi-api.md#L344), [13 §2 L77](notes/13-shinobi-cheatsheet.md#L77)
+- Does `sqllog` (double-encoded) actually put non-forced messages into the DB? [13 §10 L400](notes/13-shinobi-cheatsheet.md#L400)
 - Should cameras optionally publish over UDP to test real picture corruption? [07 Open L310](notes/07-fault-injection.md#L310)
 
 ## Changelog
@@ -268,6 +283,7 @@ P0 = must work before anything else; each step has a "done when".
 | Date | Notes ingested | Change |
 |---|---|---|
 | 2026-10-31 | 01–12, CP, A1, A2, theory/ | initial version |
+| 2026-10-31 | 13 | DR use case; coercion, generated ids, orphan sweep, hidden stream errors, backups as secrets; key-cache question resolved |
 
 
 ```

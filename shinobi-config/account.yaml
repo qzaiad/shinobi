@@ -1,0 +1,26 @@
+# Shinobi admin account + API keys as code: scripts/shinobi_bootstrap.py plan|apply.
+# No secrets here. E-mails and passwords come from .env; the generated values (user id, API key
+# codes) are written back into .env by `apply`, under the variable names given below.
+version: 1
+
+account:
+  # Merged into the account's settings (Users.details), in Shinobi's stored form: strings.
+  # Shinobi merges, so keys not listed here keep whatever Shinobi defaults them to.
+  details:
+    size: "20000"            # MB of recordings per account before the oldest are purged (S10)
+    days: "1"                # recordings older than this are purged by the hourly cron (S10)
+    # New accounts get these as "1" (getDefaultUserDetails): Shinobi's cloud remote access,
+    # plugin manager and system control. Not used here, so off.
+    use_remote_access: "0"
+    use_plugin_manager: "0"
+    use_system_control: "0"
+
+api_keys:
+  # Read-only key for services, CLI and tests (S11): never changes anything.
+  - env: SHINOBI_API_KEY
+    ip: 0.0.0.0              # allowed client IPs; 0.0.0.0 = any (substring check, S11)
+    permissions: [auth_socket, get_monitors, get_logs, watch_stream, watch_snapshot, watch_videos]
+  # Provisioning key for scripts/provision_monitors.py (S12): unredacted configs + saves.
+  - env: SHINOBI_EDIT_API_KEY
+    ip: 0.0.0.0
+    permissions: [get_monitors, edit_monitors]

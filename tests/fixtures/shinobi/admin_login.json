@@ -1,0 +1,84 @@
+{
+  "$user": {
+    "ok": true,
+    "auth_token": "AUTH_TOKEN",
+    "ke": "GROUP_KEY",
+    "uid": "USER_ID",
+    "mail": "admin@example.com",
+    "details": {
+      "factorAuth": "0",
+      "size": "20000",
+      "days": "1",
+      "event_days": "",
+      "log_days": "",
+      "max_camera": "",
+      "permissions": "all",
+      "edit_size": "1",
+      "edit_days": "1",
+      "edit_event_days": "1",
+      "edit_log_days": "1",
+      "use_admin": "1",
+      "use_aws_s3": "1",
+      "use_whcs": "1",
+      "use_sftp": "1",
+      "use_webdav": "1",
+      "use_discordbot": "1",
+      "use_ldap": "1",
+      "use_plugin_manager": "0",
+      "use_remote_access": "0",
+      "use_system_control": "0",
+      "aws_use_global": "0",
+      "b2_use_global": "0",
+      "webdav_use_global": "0",
+      "show_system_usage": "1",
+      "whcs_use_global": "0",
+      "use_bb_b2": "1",
+      "use_mnt": "1",
+      "mnt_use_global": "0",
+      "use_googd": "1",
+      "googd_use_global": "0",
+      "monitorOrder": {
+        "GROUP_KEYcam_gate": {
+          "ke": "GROUP_KEY",
+          "mid": "cam_gate",
+          "x": "0",
+          "y": "0",
+          "height": "6",
+          "width": "6"
+        },
+        "GROUP_KEYcam_quay": {
+          "ke": "GROUP_KEY",
+          "mid": "cam_quay",
+          "x": "6",
+          "y": "0",
+          "height": "6",
+          "width": "6"
+        },
+        "GROUP_KEYcam_waterway": {
+          "ke": "GROUP_KEY",
+          "mid": "cam_waterway",
+          "x": "0",
+          "y": "6",
+          "height": "6",
+          "width": "6"
+        },
+        "GROUP_KEYcam_yard": {
+          "ke": "GROUP_KEY",
+          "mid": "cam_yard",
+          "x": "6",
+          "y": "6",
+          "height": "6",
+          "width": "6"
+        }
+      }
+    }
+  },
+  "addStorage": [
+    {
+      "name": "second",
+      "path": "/home/Shinobi/videos2/"
+    }
+  ],
+  "timezone": "UTC",
+  "ok": true
+}
