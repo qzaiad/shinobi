@@ -18,6 +18,7 @@ Line numbers are from the commit that last updated the bullet; if a note was edi
 | 06 | notes/06-realism.md | CP | camera-profile.md |
 | 07 | notes/07-fault-injection.md | A1, A2 | adr/0001-…, adr/0002-… |
 | LP | learning-plan.md | 13 | notes/13-shinobi-cheatsheet.md |
+| 14 | notes/14-motion-detection.md | | |
 
 **[+]** = my addition, not observed in a note (best practice or inference). Verify before relying on it.
 
@@ -26,7 +27,7 @@ Line numbers are from the commit that last updated the bullet; if a note was edi
 2. Mark bullets a new finding contradicts or resolves (`~~old~~ → see [13 §x]`), don't delete them silently.
 3. Add the note to the coverage table and a line to the changelog at the bottom.
 
-**Coverage.** Ingested: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, CP, A1, A2, theory/.
+**Coverage.** Ingested: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, CP, A1, A2, theory/.
 Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 
 ---
@@ -51,6 +52,7 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - **Timelapse** frames per camera. [09 §4 L147](notes/09-shinobi-monitor.md#L147)
 - **[+]** Audit trail: who viewed, exported or deleted which footage (hinted by Shinobi's silent deletes, [10 L443](notes/10-recording-storage.md#L443)).
 - **[+]** Clock/NTP health per camera and per server, since evidence depends on it.
+- **Motion zones per camera** (lane, hoist, restricted area) with per-zone thresholds; events name the zone. [14 §5 L143](notes/14-motion-detection.md#L143)
 
 ## 2. Expected problems
 
@@ -114,10 +116,13 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - Deleting a camera keeps its files by default, and re-creating the same id brings old footage back. [12 §3 L92](notes/12-monitors-as-code.md#L92)
 - A fixed 2 s wait + ffprobe per save makes bulk provisioning O(n). [12 §4 L111](notes/12-monitors-as-code.md#L111), [12 §9 L323](notes/12-monitors-as-code.md#L323)
 - Different UI paths store different defaults for the same field (`null` vs `0`, 10⁹ vs 10⁶ probesize), so drift stays invisible until it is diffed. [12 §6 L244-266](notes/12-monitors-as-code.md#L244)
-- **Type coercion breaks the server's own checks:** `"1"` is stored as `1`, code tests `=== '1'`, so the setting can't be switched on (only the double-encoded `"\"1\""` works). [13 §4.1 L149](notes/13-shinobi-cheatsheet.md#L149)
+- **Type coercion breaks the server's own checks:** `"1"` is stored as `1`, code tests `=== '1'`. ~~so the setting can't be switched on~~ → see [14 §8 L264](notes/14-motion-detection.md#L264): a (re)start converts numbers back to strings, but a **no-restart edit leaves numbers in memory** and silently stops event saving. Only the double-encoded `"\"1\""` is safe on every path. [13 §4.1 L149](notes/13-shinobi-cheatsheet.md#L149)
 - **Server-generated identifiers can't be set by the client** (user id, API key codes): a rebuild produces new credentials that every client must be given. Allow client-chosen ids or an import path. [13 §2 L76](notes/13-shinobi-cheatsheet.md#L76)
 - Defaults of new objects differ from older ones (new accounts get remote access on), so "recreate" ≠ "restore". [13 §6 L264](notes/13-shinobi-cheatsheet.md#L264)
 - Backup import is insert-if-absent and answers `ok` either way, so it is not a sync. [13 §5.2 L217](notes/13-shinobi-cheatsheet.md#L217)
+- **Two code paths for one save:** hot-apply and restart leave different in-memory state; a re-sent value loses its type unless the client re-encodes it every time. One normalisation function for every path. [14 §8 L264-307](notes/14-motion-detection.md#L264), [14 §8 L289](notes/14-motion-detection.md#L289)
+- Detector frames default to 640×480 whatever the camera's aspect ratio. [14 §4 L120](notes/14-motion-detection.md#L120)
+- An unused feature still costs resources: event-recording buffer output and a 15 s post-start motion lock in continuous-record mode. [14 §3 L116](notes/14-motion-detection.md#L116)
 
 ### 2.7 Operations and processes
 - PID 1: without an init, zombie ffmpeg processes pile up and SIGTERM is ignored. [08 §2 L75-89](notes/08-shinobi-install.md#L75), [05 §6 L476](notes/05-camera-fleet.md#L476)
@@ -135,6 +140,15 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - **The NVR's log hides stream-health symptoms** (`RTP: missed`, `Non-monotonous DTS`, `bad cseq` dropped). Count loss/timestamp errors as metrics. [13 §4.2 L182](notes/13-shinobi-cheatsheet.md#L182)
 - Four log destinations (live socket, per-camera DB log only for whitelisted types, system log, stdout): pick one structured log with levels. [13 §4 L122](notes/13-shinobi-cheatsheet.md#L122)
 - Locked-out logins answer exactly like wrong passwords, so tools can't tell them apart. [13 §2 L74](notes/13-shinobi-cheatsheet.md#L74)
+
+### 2.8 Motion detection
+- **Motion ≠ presence:** pixel differencing sees only change; stopped vehicles are invisible and only edges count. [14 §2 L50-57](notes/14-motion-detection.md#L50)
+- Full-frame defaults are useless: water and clouds fire all the time (waterway 15.8 events/min, all false), cars stay below 10 % of the frame. [14 §6.1 L187](notes/14-motion-detection.md#L187), [14 §2 L53](notes/14-motion-detection.md#L53)
+- False-motion sources to design against: burned-in OSD clock (7–13 % of its box every second), camera shake on masts and cranes (10–14 % of a static floor on every frame), whole-frame jumps (loop seam / PTZ move / IR switch, 80–96 %). [14 §6.3 L211-219](notes/14-motion-detection.md#L211)
+- Without episodes, the lock sets the event rate during sustained activity: 2 s → ~3 events per container lowering; downstream has to merge pulses. [14 §9 L315](notes/14-motion-detection.md#L315)
+- Under heavy shake, pixel differencing can't see a person-sized change: zones go blind or noisy. Needs object detection or stabilisation. [14 §6.5 L244](notes/14-motion-detection.md#L244)
+- Merged multi-zone events average the confidences and hide the zone names in box tags. [14 §3 L100](notes/14-motion-detection.md#L100)
+- Event rows with whole-second time and no id can't be told apart within a second. [14 §11 L356](notes/14-motion-detection.md#L356)
 
 ## 3. Security considerations
 
@@ -186,12 +200,14 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - Validate each camera on add: H.264 Main, yuv420p, no B-frames, fixed GOP ≈ 2 s. Warn, don't reject (real cameras vary). [CP L13-25](camera-profile.md#L13), [05 §4.5 L294](notes/05-camera-fleet.md#L294)
 - RTSP over TCP by default. Offer UDP per camera. [09 §5.1 L250](notes/09-shinobi-monitor.md#L250), [07 Open L310](notes/07-fault-injection.md#L310)
 - Bounded probing (`analyzeduration`/`probesize` ~1 s / 1 MB), not 1000 s / 1 GB. [09 §5.1 L237](notes/09-shinobi-monitor.md#L237), [12 §6 L259](notes/12-monitors-as-code.md#L259)
+- Detect on the **sub stream** at its native size (no scaling): ≈ ⅓ of the CPU of decoding the main stream (5 % vs 11–17 % per camera). Run the detector decode in a separate process from the recorder, so a sub-stream failure doesn't cut the recording. [14 §6.2 L193-201](notes/14-motion-detection.md#L193), [14 §3 L96](notes/14-motion-detection.md#L96)
+- Motion detector: zone polygons, per-zone min/max % + N-frame debounce + "one connected blob ≥ min" (kills scattered noise), 5 fps, a lock between events. [14 §2 L33](notes/14-motion-detection.md#L33), [14 §4 L120](notes/14-motion-detection.md#L120)
 
 ### 4.3 Data model and API
 - Key everything by `(tenant, camera_id)`. Validate ids strictly (`^[a-z0-9_-]+$`) and reject anything else instead of rewriting it. [11 §2 L53-56](notes/11-shinobi-api.md#L53), [05 §3 L127](notes/05-camera-fleet.md#L127)
 - Separate **config** (stored) from **runtime state** (status, viewers, streams) in the schema and the API. [11 §4 L135-143](notes/11-shinobi-api.md#L135), [12 §1 L30](notes/12-monitors-as-code.md#L30)
 - Typed, versioned config schema with PATCH semantics, instead of a 212-key blob replaced on every save. [12 §2 L61](notes/12-monitors-as-code.md#L61), [06 §3 L152](notes/06-realism.md#L152)
-- **Hot-apply** settings that don't need a new pull (retention, detector zones, labels). Restart only when input/output really change. [12 §4 L117](notes/12-monitors-as-code.md#L117)
+- **Hot-apply** settings that don't need a new pull (retention, detector zones, labels). Restart only when input/output really change. [12 §4 L117](notes/12-monitors-as-code.md#L117). Shinobi does this for zones/thresholds; the hot path must leave **the same state** as a restart. [14 §4 L139](notes/14-motion-detection.md#L139), [14 §8 L264](notes/14-motion-detection.md#L264)
 - **Reads are pure:** GET returns exactly what is stored, so the config reaches a fixed point. [12 §5 L147-155](notes/12-monitors-as-code.md#L147)
 - Correct HTTP status codes (401/403/404), explicit pagination, no silent caps. [11 §3 L113-119](notes/11-shinobi-api.md#L113)
 - Stable numeric status enum. Labels are presentation only. [11 §4 L145](notes/11-shinobi-api.md#L145)
@@ -213,6 +229,8 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - Strict types (`StrictBool`), schema `version` field, reject old versions explicitly. [06 §3 L151-152](notes/06-realism.md#L151)
 - Accounts and API keys as code too (permissions in git, generated secrets written back to the env file atomically, 0600). [13 §6 L245](notes/13-shinobi-cheatsheet.md#L245)
 - Three layers: config (git) · secrets (env/secret store) · history (backups). Only the first is rebuildable from the repo. [13 §5.1 L191](notes/13-shinobi-cheatsheet.md#L191)
+- Zones in **normalised coordinates** (0..1), converted to detector pixels at render time, so a change of detector size doesn't move them; pixel input accepted for UI-drawn zones. [14 §5 L143-174](notes/14-motion-detection.md#L143)
+- Model the server's storage *and* runtime form in the client (`stored_form(wire_form(desired)) == desired`), tested. [14 §8 L293](notes/14-motion-detection.md#L293)
 
 ### 4.6 Testing
 - Three speeds: unit / integration (needs ffmpeg) / e2e (needs stack, opt-in so a missing stack fails loudly). [01 §7 L208-214](notes/01-repo-bootstrap.md#L208), [07 §5 L245](notes/07-fault-injection.md#L245)
@@ -225,6 +243,9 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - Idempotency test: second apply → 0 changes, 0 restarts; export byte-identical. [12 §7 L268-294](notes/12-monitors-as-code.md#L268)
 - **Rebuild drill** (wipe DB → rebuild → e2e → second plan = 0) as a recurring test; it found a CLI bug unit tests could not. Test the documented command lines too. [13 §7.1 L289](notes/13-shinobi-cheatsheet.md#L289)
 - Resource benchmarks with cgroup CPU counters, ≥ 3 runs, control group. [10 §7 L368-387](notes/10-recording-storage.md#L368)
+- Tune detection against **ground truth from the clip** (passages per loop) and a per-frame signal probe (ffmpeg crop + tblend + threshold), not against the event list alone (it only shows accepted, lock-sampled events). [14 §6.3 L203](notes/14-motion-detection.md#L203), [14 §7 L261](notes/14-motion-detection.md#L261)
+- Negative-control camera (water/clouds) and quiet periods: events there = false positives. e2e test on rate bounds per zone. [14 §6.1 L187](notes/14-motion-detection.md#L187), [14 §6.4 L230](notes/14-motion-detection.md#L230)
+- Discriminating experiments (one variable, a control camera) before changing thresholds: "no events" was a server bug, not tuning. [14 §8 L264-287](notes/14-motion-detection.md#L264)
 - **[+]** Property tests for the index/retention logic (random segment streams, crashes, clock jumps).
 
 ### 4.7 Docker
@@ -262,7 +283,7 @@ P0 = must work before anything else; each step has a "done when".
 | P1 | Status + events out (WebSocket push, MQTT per the contract) | camera died/recovered and segment-finished arrive < 1 s | [11 §7](notes/11-shinobi-api.md#L223), [A2](adr/0002-shinobi-license.md#L42) |
 | P1 | Live view: low-latency (fMP4/WebRTC via MediaMTX), HLS fallback | latency < 2 s measured via OSD vs host clock | [09 §6-7](notes/09-shinobi-monitor.md#L332) |
 | P1 | Snapshots from sub stream / camera HTTP, honest errors | no placeholder ever returned | [11 §6](notes/11-shinobi-api.md#L206), [06 §5](notes/06-realism.md#L316) |
-| P2 | Motion detection on sub stream (zones, thresholds, hot-applied) | sane event rate on port clips, no restart on tuning | [06 §2](notes/06-realism.md#L48), [LP S14](learning-plan.md#L152) |
+| P2 | Motion detection on sub stream (zones, thresholds, hot-applied) | sane event rate on port clips (gate ≈ passages/loop, 0 on quiet road), no restart on tuning, events still saved after hot-apply | [06 §2](notes/06-realism.md#L48), [14 §10 L324](notes/14-motion-detection.md#L324) |
 | P2 | Object detection via detector service (shared `Detection` schema) | labels + confidences on events | [LP S15, S23](learning-plan.md#L158) |
 | P2 | Event-triggered recording with pre/post buffer | clip contains the 5 s before the event | [09 §8](notes/09-shinobi-monitor.md#L414) |
 | P2 | Multi-tenant users/groups, RBAC, login rate limit, audit log | permission matrix tests pass | [08 §7-8](notes/08-shinobi-install.md#L229) |
@@ -275,7 +296,8 @@ P0 = must work before anything else; each step has a "done when".
 - Can a graceful shutdown finalize all open segments? [10 Open L459](notes/10-recording-storage.md#L459)
 - One-time 870/930 frame split after switching to camera timestamps: cause unknown. [10 §6 L363](notes/10-recording-storage.md#L363)
 - ~~Does a deleted key keep working until restart (cache)?~~ → no, via API it stops at once. [11 §9 L344](notes/11-shinobi-api.md#L344), [13 §2 L77](notes/13-shinobi-cheatsheet.md#L77)
-- Does `sqllog` (double-encoded) actually put non-forced messages into the DB? [13 §10 L400](notes/13-shinobi-cheatsheet.md#L400)
+- Does `sqllog` (double-encoded) actually put non-forced messages into the DB? [13 §10 L400](notes/13-shinobi-cheatsheet.md#L400). Flags are now stored as strings (S14), still not re-tested. [14 §8 L306](notes/14-motion-detection.md#L306)
+- Do webhooks fire after a hot-apply now that flags are strings? (S17) [14 §11 L352](notes/14-motion-detection.md#L352)
 - Should cameras optionally publish over UDP to test real picture corruption? [07 Open L310](notes/07-fault-injection.md#L310)
 
 ## Changelog
@@ -284,6 +306,7 @@ P0 = must work before anything else; each step has a "done when".
 |---|---|---|
 | 2026-10-31 | 01–12, CP, A1, A2, theory/ | initial version |
 | 2026-10-31 | 13 | DR use case; coercion, generated ids, orphan sweep, hidden stream errors, backups as secrets; key-cache question resolved |
+| 2026-11-06 | 14 | motion zones use case; 2.8 motion detection problems; coercion bullet refined (hot-apply bug); sub-stream detector, normalised zones, wire/runtime form, tuning tests |
 
 
 ```

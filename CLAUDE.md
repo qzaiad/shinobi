@@ -29,7 +29,7 @@ media/                    footage (gitignored) — only manifest.tsv + SOURCES.m
 tools/                    Python dev tools (streamprobe: ffprobe stream health / GOP check)
 scripts/                  fetch_media.sh, probe.sh, chaos.sh, provision_monitors.py, inject_event.py
 tools/streamprobe/        ffprobe-based stream health check (codec, pix_fmt, B-frames, GOP regularity)
-shinobi-config/           monitor template + generated monitors/*.json, account.yaml (account + API keys; no secrets)
+shinobi-config/           monitor template, detection.yaml (motion regions), generated monitors/*.json, account.yaml (account + API keys; no secrets)
 services/common/          shinobi_client.py, schema.py (shared)
 services/webhook-receiver/
 services/evaluator/
@@ -70,7 +70,10 @@ sim/scripts/snapshot.sh rtsp://localhost:8554/cam-gate-sub [out.jpg]   # one JPE
 scripts/shinobi-cpu.sh [SECONDS] [RUNS]   # CPU per Shinobi process + container total (cgroup), 100 % = 1 core
 scripts/chaos.sh status|stop|start|crash|freeze|thaw|flap|netem|clear <cam> [args]   # fault injection (netem: e.g. loss 10%)
 docker compose exec shinobi mysql ccio -N -B --raw -e "select time, json_value(info,'$.type'), json_value(info,'$.msg.cmd') from Logs where mid='cam_gate' order by time desc limit 5"   # ffmpeg command Shinobi generated
-uv run python -m services.common.shinobi_client monitors|videos [mid] [--limit N]|snapshot <mid> <out.jpg>   # read-only API client (.env key)
+uv run python -m services.common.shinobi_client monitors|videos [mid] [--limit N]|events [mid] [--limit N]|snapshot <mid> <out.jpg>   # read-only API client (.env key)
+uv run python scripts/motion_stats.py [--minutes N | --since T [--until T]] [mid ...]   # motion events/min + confidence per monitor and region
+scripts/region_signal.sh rtsp://localhost:8554/cam-gate-sub X Y W H [SECONDS] [FPS] [DELTA]   # per-frame % changed in a rectangle (what the motion detector sees)
+uv run pytest -m e2e tests/test_motion.py   # motion event rates per region over the last 3 min (detection on)
 uv run python scripts/provision_monitors.py plan|apply [--prune]   # monitors from cameras.yaml + shinobi-config/ (edit key); plan exit 2 = changes pending
 uv run python scripts/provision_monitors.py render [--check]|export [--out DIR]   # desired files in shinobi-config/monitors/ | live configs as files
 uv run python scripts/shinobi_bootstrap.py plan|apply [--prune] [--wait 180]   # superuser, account, API keys from shinobi-config/account.yaml + .env; apply rewrites generated values (uid, key codes) in .env
@@ -105,7 +108,8 @@ Update this section when commands change.
 - `init.sh` rewrites `conf.json` keys `db`, `ssl`, `pluginKeys`, `subscriptionId`, `databaseType`, `cpuUsageMarker` from env on every start; keep `DB_PASSWORD` empty. Max 5 failed logins per IP, then 15 min lock.
 - API URLs follow `/[API_KEY]/<endpoint>/[GROUP_KEY]/[MONITOR_ID]`. Keys come from `.env`. A bad key or missing permission is HTTP 200 with `{"ok": false}` (or `[]`); check the body. Answers embed the key in URLs: redact before saving. See `docs/notes/11-shinobi-api.md`.
 - Events leave Shinobi via detector webhooks, MQTT outbound (`mqttClient` enabled in `conf.json`), the REST API, or WebSocket. The chosen primary transport is recorded in `docs/adr/`.
-- Monitor configs are provisioned from `sim/cameras.yaml` + `shinobi-config/` by `scripts/provision_monitors.py`; the superuser, admin account and API keys by `scripts/shinobi_bootstrap.py` from `shinobi-config/account.yaml` + `.env`. Don't rely on hand-made UI changes — put them in the repo.
+- Monitor configs are provisioned from `sim/cameras.yaml` + `shinobi-config/` (template, `detection.yaml`) by `scripts/provision_monitors.py`; the superuser, admin account and API keys by `scripts/shinobi_bootstrap.py` from `shinobi-config/account.yaml` + `.env`. Don't rely on hand-made UI changes — put them in the repo.
+- Monitor `details` flags are stored as strings (`"1"`, sent double-encoded by the provisioner): a no-restart save of detection settings otherwise leaves numbers in memory and `=== '1'` checks (event saving) fail. See `docs/notes/14-motion-detection.md` §8.
 - Change Shinobi state through its API, never by SQL: Shinobi caches users, keys and monitors in memory. Operations, logs, backup and troubleshooting: `docs/notes/13-shinobi-cheatsheet.md`.
 - **Shinobi docs and APIs change. Do not invent endpoints, config keys, payload fields or plugin names.** If unsure, say so and check https://docs.shinobi.video or the Shinobi source on GitLab, or inspect real payloads from the running instance.
 

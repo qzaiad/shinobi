@@ -1,0 +1,55 @@
+# Motion detection (Shinobi's built-in pam-diff detector) per camera. Hand-edited.
+# Rendered into shinobi-config/monitors/*.json by scripts/provision_monitors.py (scripts/detection.py).
+# Explained, with the tuning measurements, in docs/notes/14-motion-detection.md.
+#
+# Cameras not listed keep the template's detector: 0.
+#
+# input: sub | main   which stream the detector decodes. sub = ffmpeg input #1 (/<cam>-sub,
+#                     640x360 @ 10 fps); recording and live view stay on the main stream.
+# details:            raw Shinobi detector keys (monitor-wide). detector, detector_pam,
+#                     detector_send_frames, detector_scale_x/y, input_maps,
+#                     input_map_choices and cords are set by the renderer.
+# regions:            polygons, >= 4 points each, region name = [A-Za-z0-9_]+.
+#   points:     fractions of the frame, [x, y] with 0..1 (0,0 = top left)   or
+#   points_px:  pixels of the detector frame (what Shinobi's region editor shows)
+#   sensitivity       min % of the region's pixels that changed       (Shinobi default 10)
+#   max_sensitivity   triggers above this % are dropped               (default: none)
+#   threshold         consecutive detector frames over sensitivity    (default 1)
+#   color_threshold   min brightness change (0..255) of one pixel     (default 9)
+version: 1
+
+defaults:
+  input: sub
+  details:
+    detector_fps: 5            # frames compared per second
+    detector_lock_timeout: 5000  # ms between accepted events (Shinobi default 2000): ~1 per activity burst
+  region:
+    sensitivity: 2
+    color_threshold: 9
+    threshold: 1
+
+cameras:
+  cam-gate:
+    regions:
+      - name: gate_lane        # road in front of the gate, both lanes; OSD camera id cut out
+        points: [[0, 0.76], [1, 0.76], [1, 0.92], [0.86, 0.92], [0.86, 1], [0, 1]]
+        sensitivity: 3         # quiet road 0-3 %, single car 4-10 %, truck 20-52 % (total)
+        threshold: 2           # 2 frames = 0.4 s at 5 fps
+
+  cam-quay:
+    regions:
+      - name: hoist            # container path under the crane spreader, above the truck
+        points: [[0.40, 0.15], [0.64, 0.15], [0.64, 0.48], [0.40, 0.48]]
+        sensitivity: 5
+        max_sensitivity: 60
+        threshold: 2
+      - name: berth_edge       # waterline / quay edge left of the truck
+        points: [[0.03, 0.71], [0.43, 0.71], [0.43, 0.77], [0.03, 0.77]]
+        sensitivity: 15
+        max_sensitivity: 40
+        threshold: 3
+      - name: restricted_quay  # quay floor between the crane legs; OSD camera id excluded
+        points: [[0, 0.80], [0.86, 0.80], [0.86, 1], [0, 1]]
+        sensitivity: 12
+        max_sensitivity: 40
+        threshold: 3

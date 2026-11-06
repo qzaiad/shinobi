@@ -49,6 +49,7 @@ REQUESTS: dict[str, str] = {
     "monitor_unknown": "monitor/{ke}/no_such_monitor",
     "videos_cam_gate": "videos/{ke}/cam_gate?limit=3",
     "logs_cam_gate": "logs/{ke}/cam_gate?limit=2",
+    "events_cam_quay": "events/{ke}/cam_quay?limit=6",  # region-tagged motion events (S14)
 }
 # Recorded with SHINOBI_EDIT_API_KEY (Get + Edit Monitors): the unredacted stored configs that
 # scripts/provision_monitors.py compares against. Skipped when that key is not set.

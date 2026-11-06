@@ -2,6 +2,7 @@
 
     uv run python -m services.common.shinobi_client monitors
     uv run python -m services.common.shinobi_client videos [MONITOR_ID] [--limit N]
+    uv run python -m services.common.shinobi_client events [MONITOR_ID] [--limit N]
     uv run python -m services.common.shinobi_client snapshot MONITOR_ID out.jpg
 
 Every endpoint is GET /<api key>/<endpoint>/<group key>[/<monitor id>] on Shinobi's web port
@@ -12,8 +13,8 @@ docs/notes/12-monitors-as-code.md. The traps this module exists to hide:
 
     1. A wrong key or a missing permission is HTTP 200 with {"ok": false, "msg": ...}, so the
        status code says nothing; the body is checked on every call (ShinobiAuthError).
-    2. Success shapes differ per endpoint: monitor/logs return a bare JSON array, videos an
-       object {"ok": true, "videos": [...]}.
+    2. Success shapes differ per endpoint: monitor/logs/events return a bare JSON array,
+       videos an object {"ok": true, "videos": [...]}.
     3. The snapshot URL answers 200 image/jpeg with a stock placeholder (web/libs/img/bg.jpg)
        when the monitor has no snapshot output (SnapshotUnavailable).
     4. The API key sits in the URL path, so it ends up in httpx's exception messages and in
@@ -212,6 +213,75 @@ class LogEntry:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class EventBox:
+    """One detection box of an event ("matrix"), in detector pixels (imgWidth x imgHeight).
+
+    Built-in motion: one box per connected blob of changed pixels, tag = region name,
+    confidence = the blob's size in % of its region (pixel-change, Session 14).
+    """
+
+    tag: str
+    x: float
+    y: float
+    width: float
+    height: float
+    confidence: float
+
+    @classmethod
+    def from_api(cls, raw: Mapping[str, Any]) -> Self:
+        return cls(
+            tag=str(raw.get("tag", "")),
+            x=float(raw.get("x", 0)),
+            y=float(raw.get("y", 0)),
+            width=float(raw.get("width", 0)),
+            height=float(raw.get("height", 0)),
+            confidence=float(raw.get("confidence", 0)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class Event:
+    """One row of the Events table: an accepted detector trigger (Session 14).
+
+    `name` is "multipleRegions" when conf.json detectorMergePamRegionTriggers is true: all
+    regions that fired on one frame become one event with the *average* confidence, so the
+    regions that fired are only visible in `boxes[].tag` (see `regions`).
+    """
+
+    mid: str
+    time: datetime  # UTC, whole seconds (DATETIME column)
+    plug: str  # "built-in" for the pam-diff motion detector, else the plugin name
+    reason: str  # "motion", "object", ...
+    name: str
+    confidence: float  # motion: changed pixels in % of the region (merged: average)
+    boxes: tuple[EventBox, ...]
+    image_size: tuple[int, int] | None  # detector frame (width, height) the boxes refer to
+    archived: bool
+
+    @classmethod
+    def from_api(cls, raw: Mapping[str, Any]) -> Self:
+        d = raw.get("details") or {}
+        w, h = _int_or_none(d.get("imgWidth")), _int_or_none(d.get("imgHeight"))
+        return cls(
+            mid=raw["mid"],
+            time=_parse_time(raw["time"]),
+            plug=str(d.get("plug", "")),
+            reason=str(d.get("reason", "")),
+            name=str(d.get("name", "")),
+            confidence=float(d.get("confidence") or 0),
+            boxes=tuple(EventBox.from_api(m) for m in d.get("matrices") or () if m),
+            image_size=(w, h) if w and h else None,
+            archived=bool(raw.get("archive")),
+        )
+
+    @property
+    def regions(self) -> tuple[str, ...]:
+        """Regions that fired (box tags), sorted; falls back to `name` without boxes."""
+        tags = sorted({b.tag for b in self.boxes if b.tag})
+        return tuple(tags) if tags else (self.name,)
+
+
 class ShinobiClient:
     """Shinobi API client; one pooled HTTP connection set per instance.
 
@@ -326,6 +396,29 @@ class ShinobiClient:
         body = self._get_json(path, params)
         return [Video.from_api(v) for v in body["videos"]]
 
+    def events(
+        self,
+        mid: str | None = None,
+        *,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        limit: int | None = None,
+    ) -> list[Event]:
+        """Detector events (Events table), newest first. Needs "Can View Videos".
+
+        Unlike videos, the answer is a bare JSON array. Window: time >= start, time <= end.
+        Shinobi caps the answer at 500 rows unless limit is set.
+        """
+        params: dict[str, str] = {}
+        if start is not None:
+            params["start"] = _format_time(start)
+        if end is not None:
+            params["end"] = _format_time(end)
+        if limit is not None:
+            params["limit"] = str(limit)
+        path = self._path("events", mid) if mid else self._path("events")
+        return [Event.from_api(e) for e in self._get_json(path, params)]
+
     def logs(self, mid: str | None = None, *, limit: int = 50) -> list[LogEntry]:
         """Newest log entries (Shinobi's default limit is 50). Needs "Can Get Logs".
 
@@ -434,6 +527,13 @@ def _print_videos(videos: list[Video]) -> None:
         )
 
 
+def _print_events(events: list[Event]) -> None:
+    print(f"{'MONITOR':<14} {'TIME (UTC)':<19} {'REASON':<7} {'CONF':>5}  REGIONS (box %)")
+    for e in events:
+        boxes = ", ".join(f"{b.tag} {b.confidence:.1f}" for b in e.boxes) or e.name
+        print(f"{e.mid:<14} {e.time:%Y-%m-%d %H:%M:%S} {e.reason:<7} {e.confidence:>5.1f}  {boxes}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m services.common.shinobi_client")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -441,6 +541,9 @@ def main(argv: list[str] | None = None) -> int:
     p_vid = sub.add_parser("videos", help="list finished recordings, newest first")
     p_vid.add_argument("mid", nargs="?")
     p_vid.add_argument("--limit", type=int, default=10)
+    p_ev = sub.add_parser("events", help="list detector events, newest first")
+    p_ev.add_argument("mid", nargs="?")
+    p_ev.add_argument("--limit", type=int, default=10)
     p_snap = sub.add_parser("snapshot", help="save the latest JPEG of a monitor")
     p_snap.add_argument("mid")
     p_snap.add_argument("out", type=Path)
@@ -453,6 +556,8 @@ def main(argv: list[str] | None = None) -> int:
                     _print_monitors(shinobi.monitors())
                 case "videos":
                     _print_videos(shinobi.videos(args.mid, limit=args.limit))
+                case "events":
+                    _print_events(shinobi.events(args.mid, limit=args.limit))
                 case "snapshot":
                     data = shinobi.snapshot(args.mid)
                     args.out.write_bytes(data)

@@ -153,7 +153,7 @@ Stopped`, `Process Unexpected Exit`, `Fatal Error`, `Ping Failed`, `Spawn Error`
 Idling`, `Error While Decoding`, `Incorrect Settings Chosen`, `Event Webhook Error`, and
 `FFMPEG STDERR` lines matching §4.2. Everything else only when `details.sqllog === '1'`.
 
-`sqllog` and the S9 open question (does `"0"`→`0` break `=== '1'` checks?): **yes, here.**
+`sqllog` and the S9 open question (does `"0"`→`0` break `=== '1'` checks?): **yes, here** (refined in [14 §8](14-motion-detection.md#L264): a start converts back to `'1'`, a no-restart edit does not).
 Measured on `cam_yard`:
 
 | Sent in `configureMonitor` | Stored (`json_type`) | `=== '1'` |
@@ -377,7 +377,7 @@ larger `size`), but the disk usage Shinobi sums from rows is too high until then
 | URL with `localhost` → monitor dies | `localhost` = Shinobi container | `mediamtx` (S9) |
 | Monitor "Died" though camera is back | 10-min back-off after 3 fails | restart monitor; S25 watchdog (S9) |
 | Every edit interrupts recording 4–7 s | save = ffprobe + 2 s + restart | provision only diffs (S12) |
-| A `"1"` setting has no effect | stored as number 1, code checks `=== '1'` | send `"\"1\""` (§4.1) |
+| A `"1"` setting has no effect | stored as number 1, code checks `=== '1'` | send `"\"1\""` (§4.1); provisioner does it for all flags since S14 |
 | Packet loss / DTS errors invisible in Shinobi | stderr lines dropped (§4.2) | streamprobe, check_stream.sh |
 | Footage gone after ~7 h despite `days 1` | size cap (20000 MB / 4 cams) decides first | size vs days on purpose (S10) |
 | Videos deleted, nothing logged | size purge doesn't log | own audit (S25) (S10) |
@@ -399,7 +399,7 @@ larger `size`), but the disk usage Shinobi sums from rows is too high until then
    permission update → `Not Authorized` after delete; second request of a key 32 → 17 ms = the
    `s.api` cache). Closes the Session 11/12 open item.
 3. **Least privilege drift from the UI**: the "read-only" key could edit the account (`edit_user`).
-4. **`=== '1'` vs stored numbers**: `sqllog` cannot be enabled with `"1"`; `"\"1\""` works (§4.1).
+4. **`=== '1'` vs stored numbers**: `sqllog` cannot be enabled with `"1"`; `"\"1\""` works (§4.1). S14: the real trap is the no-restart edit (events stop being saved), see [14 §8](14-motion-detection.md#L264).
 5. **Shinobi drops stream-health stderr** (§4.2).
 6. **Login answers leak**: superuser login returns the password hash; fixtures drop it
    (`scripts/record_shinobi_fixtures.py scrub_session`).

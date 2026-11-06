@@ -57,6 +57,7 @@ ROUTES: dict[str, bytes] = {
     "/API_KEY/monitor/GROUP_KEY/no_such_monitor": fixture("monitor_unknown"),
     "/API_KEY/videos/GROUP_KEY/cam_gate": fixture("videos_cam_gate"),
     "/API_KEY/logs/GROUP_KEY/cam_gate": fixture("logs_cam_gate"),
+    "/API_KEY/events/GROUP_KEY/cam_quay": fixture("events_cam_quay"),
 }
 
 
@@ -179,8 +180,11 @@ def test_video_url(client: ShinobiClient) -> None:
 
 def test_logs(client: ShinobiClient, fake: FakeShinobi) -> None:
     entries = client.logs("cam_gate", limit=2)
-    assert [e.type for e in entries] == ["Process Started", "Process Started"]
-    assert "-rtsp_transport tcp" in entries[0].msg["cmd"]  # the generated FFmpeg command
+    assert [e.type for e in entries] == ["Process Started", "Monitor Stopped"]  # newest first
+    cmd = entries[0].msg["cmd"]  # the generated FFmpeg command
+    assert "-rtsp_transport tcp" in cmd
+    # Session 14: detector decodes input #1 (sub stream) into gray PAM frames on pipe:3
+    assert '-map 1:0  -vf "fps=5" -s 640x360 -an -c:v pam -pix_fmt gray' in cmd
     assert fake.requests[-1].url.params["limit"] == "2"
 
 
@@ -349,3 +353,17 @@ def test_live_monitors_match_camera_fleet() -> None:
     assert set(monitors) == expected
     for m in monitors.values():
         assert m.code is MonitorCode.RECORDING, f"{m.mid}: {m.status}"
+
+
+def test_events_bare_array_with_region_boxes(client: ShinobiClient, fake: FakeShinobi) -> None:
+    start = datetime(2026, 11, 6, 20, 0, tzinfo=UTC)
+    events = client.events("cam_quay", start=start, limit=6)
+    assert fake.requests[-1].url.params["start"] == "2026-11-06T20:00:00Z"
+    assert len(events) == 6
+    first = events[0]
+    assert (first.plug, first.reason, first.name) == ("built-in", "motion", "multipleRegions")
+    assert first.time.tzinfo is not None
+    assert first.image_size == (640, 360)  # detector frame = sub stream size
+    assert set(first.regions) <= {"hoist", "berth_edge", "restricted_quay"}
+    assert all(0 < b.confidence <= 100 for e in events for b in e.boxes)
+    assert [e.time for e in events] == sorted((e.time for e in events), reverse=True)

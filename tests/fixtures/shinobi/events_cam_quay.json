@@ -1,0 +1,218 @@
+[
+   {
+      "ke": "GROUP_KEY",
+      "mid": "cam_quay",
+      "details": {
+         "plug": "built-in",
+         "name": "multipleRegions",
+         "reason": "motion",
+         "confidence": 11,
+         "matrices": [
+            {
+               "confidence": 6.873449325561523,
+               "width": 113,
+               "height": 64,
+               "x": 258,
+               "y": 18,
+               "tag": "hoist"
+            },
+            {
+               "confidence": 6.599112510681152,
+               "width": 174,
+               "height": 71,
+               "x": 239,
+               "y": 288,
+               "tag": "restricted_quay"
+            }
+         ],
+         "imgHeight": "360",
+         "imgWidth": "640"
+      },
+      "archive": 0,
+      "time": "2026-11-06T20:39:10.000Z"
+   },
+   {
+      "ke": "GROUP_KEY",
+      "mid": "cam_quay",
+      "details": {
+         "plug": "built-in",
+         "name": "multipleRegions",
+         "reason": "motion",
+         "confidence": 11,
+         "matrices": [
+            {
+               "confidence": 3.112840414047241,
+               "width": 59,
+               "height": 11,
+               "x": 124,
+               "y": 266,
+               "tag": "berth_edge"
+            },
+            {
+               "confidence": 2.838273763656616,
+               "width": 88,
+               "height": 71,
+               "x": 250,
+               "y": 288,
+               "tag": "restricted_quay"
+            }
+         ],
+         "imgHeight": "360",
+         "imgWidth": "640"
+      },
+      "archive": 0,
+      "time": "2026-11-06T20:39:08.000Z"
+   },
+   {
+      "ke": "GROUP_KEY",
+      "mid": "cam_quay",
+      "details": {
+         "plug": "built-in",
+         "name": "multipleRegions",
+         "reason": "motion",
+         "confidence": 21,
+         "matrices": [
+            {
+               "confidence": 5.860215187072754,
+               "width": 83,
+               "height": 47,
+               "x": 285,
+               "y": 18,
+               "tag": "hoist"
+            },
+            {
+               "confidence": 5.343258857727051,
+               "width": 45,
+               "height": 142,
+               "x": 256,
+               "y": 31,
+               "tag": "hoist"
+            },
+            {
+               "confidence": 2.663358211517334,
+               "width": 29,
+               "height": 125,
+               "x": 345,
+               "y": 48,
+               "tag": "hoist"
+            }
+         ],
+         "imgHeight": "360",
+         "imgWidth": "640"
+      },
+      "archive": 0,
+      "time": "2026-11-06T20:39:06.000Z"
+   },
+   {
+      "ke": "GROUP_KEY",
+      "mid": "cam_quay",
+      "details": {
+         "plug": "built-in",
+         "name": "multipleRegions",
+         "reason": "motion",
+         "confidence": 13,
+         "matrices": [
+            {
+               "confidence": 8.924731254577637,
+               "width": 130,
+               "height": 106,
+               "x": 265,
+               "y": 42,
+               "tag": "hoist"
+            },
+            {
+               "confidence": 2.4954628944396973,
+               "width": 88,
+               "height": 71,
+               "x": 217,
+               "y": 288,
+               "tag": "restricted_quay"
+            },
+            {
+               "confidence": 3.3726558685302734,
+               "width": 138,
+               "height": 50,
+               "x": 256,
+               "y": 288,
+               "tag": "restricted_quay"
+            }
+         ],
+         "imgHeight": "360",
+         "imgWidth": "640"
+      },
+      "archive": 0,
+      "time": "2026-11-06T20:39:04.000Z"
+   },
+   {
+      "ke": "GROUP_KEY",
+      "mid": "cam_quay",
+      "details": {
+         "plug": "built-in",
+         "name": "multipleRegions",
+         "reason": "motion",
+         "confidence": 14,
+         "matrices": [
+            {
+               "confidence": 8.399503707885742,
+               "width": 154,
+               "height": 86,
+               "x": 256,
+               "y": 18,
+               "tag": "hoist"
+            },
+            {
+               "confidence": 3.431199073791504,
+               "width": 50,
+               "height": 12,
+               "x": 82,
+               "y": 265,
+               "tag": "berth_edge"
+            },
+            {
+               "confidence": 2.7147610187530518,
+               "width": 102,
+               "height": 71,
+               "x": 233,
+               "y": 288,
+               "tag": "restricted_quay"
+            },
+            {
+               "confidence": 2.2761645317077637,
+               "width": 93,
+               "height": 52,
+               "x": 317,
+               "y": 288,
+               "tag": "restricted_quay"
+            }
+         ],
+         "imgHeight": "360",
+         "imgWidth": "640"
+      },
+      "archive": 0,
+      "time": "2026-11-06T20:39:02.000Z"
+   },
+   {
+      "ke": "GROUP_KEY",
+      "mid": "cam_quay",
+      "details": {
+         "plug": "built-in",
+         "name": "multipleRegions",
+         "reason": "motion",
+         "confidence": 11,
+         "matrices": [
+            {
+               "confidence": 2.253478527069092,
+               "width": 89,
+               "height": 71,
+               "x": 247,
+               "y": 288,
+               "tag": "restricted_quay"
+            }
+         ],
+         "imgHeight": "360",
+         "imgWidth": "640"
+      },
+      "archive": 0,
+      "time": "2026-11-06T20:39:00.000Z"
+   }
+]

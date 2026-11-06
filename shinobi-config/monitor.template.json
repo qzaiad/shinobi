@@ -100,7 +100,7 @@
     "detector_threshold": 1,
     "detector_tile_size": 20,
     "detector_timeout": 0.5,
-    "detector_trigger": 1,
+    "detector_trigger": 0,
     "detector_use_detect_object": 0,
     "detector_use_motion": 1,
     "detector_webhook": 0,

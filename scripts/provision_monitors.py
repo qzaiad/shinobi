@@ -8,17 +8,30 @@
 Pipeline (docs/notes/12-monitors-as-code.md):
 
     sim/cameras.yaml ──┐ (id, fps, width, height; camera URL = gen_compose.RTSP_BASE/<id>)
-                       ├─ render (pure) ─▶ desired[mid] ─┐
-    monitor.template ──┘                                 ├─ plan ─▶ create | update | unchanged
+    monitor.template ──┼─ render (pure) ─▶ desired[mid] ─┐
+    detection.yaml ────┘ (motion regions, S14)           ├─ plan ─▶ create | update | unchanged
     Shinobi GET /monitor (edit key) ─────▶ actual[mid] ──┘          | extra (only --prune deletes)
 
 Why "compare, then save": every save restarts the monitor's FFmpeg (a gap in the recording), so
 re-sending everything on each run is not harmless. A second `apply` must do nothing.
 
-Why the template is written in Shinobi's *stored* form (numbers, not "0"): Shinobi JSON.parses
-every string it receives (libs/basic/utils.js cleanStringsInObject), so "0" is stored as 0. If
-desired said "0" and actual said 0, every run would see a change and restart every camera.
-stored_form() applies the same conversion, and refuses values Shinobi would silently alter.
+Three forms of one config (Session 12, Session 14):
+
+    template (numbers, readable) ─ stored_form ─ runtime_form ─▶ desired ─ wire_form ─▶ POST
+                                                                    ▲                    │
+                                                                    └── Shinobi parses ──┘
+                                                                        (stored_form)
+
+- stored_form(): Shinobi JSON.parses every string it receives (libs/basic/utils.js
+  cleanStringsInObject), so "0" is stored as 0, and refuses values Shinobi would silently alter.
+- runtime_form(): top-level `details` numbers as strings (1 -> "1"). That is what a *started*
+  monitor holds in memory (libs/monitor.js s.camera -> convertNumbersToStrings), and Shinobi's
+  code compares flags with === '1'. A save that changes only live-updatable detection values
+  (regions, sensitivities) skips the restart and keeps the parsed form in memory: with numbers
+  there, detector_save === '1' is false and no event is stored any more (measured, S14).
+- wire_form(): a string Shinobi would JSON.parse is sent JSON-encoded ("1" -> "\"1\""), so it
+  is stored as the string "1". stored_form(wire_form(desired)) == desired, tested.
+If desired and actual differed in type, every run would see a change and restart every camera.
 
 Needs SHINOBI_EDIT_API_KEY in .env (permissions: Get Monitors + Edit Monitors): with the
 read-only key Shinobi redacts the camera address in GET answers and refuses saves.
@@ -41,6 +54,7 @@ from urllib.parse import urlsplit
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))  # run as a plain script: make `services` and `sim` importable
 
+from scripts import detection as det  # noqa: E402
 from services.common.envfile import load_env  # noqa: E402
 from services.common.shinobi_client import (  # noqa: E402
     MONITOR_COLUMNS,
@@ -52,6 +66,7 @@ from sim import gen_compose  # noqa: E402
 
 DEFAULT_CONFIG = REPO / "sim" / "cameras.yaml"
 DEFAULT_TEMPLATE = REPO / "shinobi-config" / "monitor.template.json"
+DEFAULT_DETECTION = det.DEFAULT_CONFIG
 DEFAULT_OUT = REPO / "shinobi-config" / "monitors"
 
 # Set per camera by render(); a template that sets them too would be a second source of truth.
@@ -126,6 +141,41 @@ def stored_form(value: Any, path: str = "", in_filters: bool = False) -> Any:
     return value
 
 
+def _js_number_string(value: int | float, path: str) -> str:
+    """Number.prototype.toString for the values monitor configs hold (no exponent forms)."""
+    text = str(value) if isinstance(value, int) else repr(value)
+    if not re.fullmatch(r"-?\d+(\.\d+)?", text):
+        raise ConfigError(f"{path}: {value!r} has no plain JavaScript string form")
+    return text
+
+
+def runtime_form(config: Mapping[str, Any]) -> dict[str, Any]:
+    """Top-level `details` numbers -> strings, like Shinobi's convertNumbersToStrings on start.
+    Nested values (cords, input_maps, ...) stay as they are: Shinobi leaves them too."""
+    out = dict(config)
+    details = config.get("details")
+    if isinstance(details, Mapping):
+        out["details"] = {
+            k: _js_number_string(v, f"details.{k}")
+            if isinstance(v, int | float) and not isinstance(v, bool)
+            else v
+            for k, v in details.items()
+        }
+    return out
+
+
+def wire_form(value: Any) -> Any:
+    """What to send so that Shinobi stores `value`: every string JSON.parse would accept is sent
+    JSON-encoded ("1" -> '"1"'), Shinobi parses one layer and keeps the string."""
+    if isinstance(value, Mapping):
+        return {k: wire_form(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [wire_form(v) for v in value]
+    if isinstance(value, str) and _js_json_parse(value)[0]:
+        return json.dumps(value, ensure_ascii=False)
+    return value
+
+
 def load_template(path: Path) -> dict[str, Any]:
     template = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(template.get("details"), dict):
@@ -139,12 +189,20 @@ def load_template(path: Path) -> dict[str, Any]:
     return template
 
 
-def render(fleet: gen_compose.Fleet, template: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
-    """Pure: cameras + template -> desired config per monitor id, in Shinobi's stored form.
+def render(
+    fleet: gen_compose.Fleet,
+    template: Mapping[str, Any],
+    detection: det.Detection | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Pure: cameras + template (+ detection.yaml) -> desired config per monitor id, in
+    Shinobi's stored form.
 
     The camera URL is the one gen_compose publishes to (RTSP_BASE/<id>), so the simulator and
-    Shinobi cannot disagree about it. Order = cameras.yaml order.
+    Shinobi cannot disagree about it. Cameras listed in detection.yaml get motion detection on
+    top of the template (scripts/detection.py). Order = cameras.yaml order.
     """
+    if detection is not None:
+        det.check_cameras(detection, fleet)
     base = urlsplit(gen_compose.RTSP_BASE)
     if base.hostname is None or base.port is None:
         raise ConfigError(f"RTSP_BASE {gen_compose.RTSP_BASE!r} needs host and port")
@@ -166,7 +224,9 @@ def render(fleet: gen_compose.Fleet, template: Mapping[str, Any]) -> dict[str, d
         }
         cfg["details"]["auto_host"] = f"{gen_compose.RTSP_BASE}/{cam.id}"
         cfg["details"]["tv_channel_id"] = mid  # name in Shinobi's TV-channel (M3U) list
-        monitors[mid] = comparable(stored_form(cfg))
+        if detection is not None:
+            cfg["details"] |= det.details_for(detection, cam, fleet.defaults)
+        monitors[mid] = comparable(runtime_form(stored_form(cfg)))
     return monitors
 
 
@@ -264,7 +324,7 @@ def apply(
         if dry_run:
             continue
         if a.kind in ("create", "update"):
-            log(f"            -> {api.save_monitor(desired[a.mid])}")
+            log(f"            -> {api.save_monitor(wire_form(desired[a.mid]))}")
         elif a.kind == "extra" and prune:
             api.delete_monitor(a.mid)
             log("            -> deleted (recordings kept)")
@@ -325,6 +385,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     ap.add_argument("--template", type=Path, default=DEFAULT_TEMPLATE)
+    ap.add_argument("--detection", type=Path, default=DEFAULT_DETECTION)
     sub = ap.add_subparsers(dest="command", required=True)
     p_render = sub.add_parser("render", help="write desired configs to shinobi-config/monitors/")
     p_render.add_argument("--out", type=Path, default=DEFAULT_OUT)
@@ -337,7 +398,9 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     try:
-        desired = render(gen_compose.load(args.config), load_template(args.template))
+        desired = render(
+            gen_compose.load(args.config), load_template(args.template), det.load(args.detection)
+        )
         if args.command == "render":
             files = _render_files(desired)
             if args.check:
@@ -355,7 +418,7 @@ def main(argv: list[str] | None = None) -> int:
                 case "export":
                     live = {mid: comparable(cfg) for mid, cfg in api.monitor_configs().items()}
                     _write_files(args.out, _render_files(live))
-    except (gen_compose.ConfigError, ConfigError, ShinobiError) as exc:
+    except (gen_compose.ConfigError, ConfigError, det.DetectionError, ShinobiError) as exc:
         print(f"provision: {exc}", file=sys.stderr)
         return 1
     return 0

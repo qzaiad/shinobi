@@ -20,6 +20,7 @@ from typing import Any
 
 import pytest
 
+from scripts import detection as det
 from scripts import provision_monitors as pm
 from services.common.envfile import load_env
 from services.common.shinobi_client import ShinobiClient, ShinobiConfig
@@ -41,7 +42,7 @@ def fleet() -> gen_compose.Fleet:
 
 @pytest.fixture
 def desired(fleet: gen_compose.Fleet, template: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    return pm.render(fleet, template)
+    return pm.render(fleet, template, det.load())  # what `render`/`apply` use
 
 
 # -- Shinobi's stored form --------------------------------------------------------------------
@@ -76,6 +77,31 @@ def test_stored_form_allows_comparisons_inside_detector_filters() -> None:
     assert pm.stored_form({"detector_filters": filters}) == {
         "detector_filters": {"f1": {"where": [{"p2": ">", "p3": 0.5}]}}
     }
+
+
+def test_runtime_form_stringifies_top_level_details_numbers_only() -> None:
+    cfg = {"fps": 15, "details": {"a": 1, "b": 0.5, "c": "x", "d": None, "e": {"n": 1}}}
+    assert pm.runtime_form(cfg) == {
+        "fps": 15,  # columns stay numbers
+        "details": {"a": "1", "b": "0.5", "c": "x", "d": None, "e": {"n": 1}},
+    }
+    with pytest.raises(pm.ConfigError, match="details.f"):
+        pm.runtime_form({"details": {"f": 1e-7}})  # JS would write 1e-7, Python 1e-07
+
+
+def test_wire_form_keeps_strings_strings_through_shinobi() -> None:
+    desired = {"details": {"detector": "1", "x": "0:0", "cords": {"r": {"s": "", "p": [[1, 2]]}}}}
+    sent = pm.wire_form(desired)
+    assert sent["details"]["detector"] == '"1"' and sent["details"]["x"] == "0:0"
+    assert pm.stored_form(sent) == desired  # Shinobi parses one layer: back to "1"
+
+
+def test_desired_survives_the_round_trip_through_shinobi(
+    desired: dict[str, dict[str, Any]],
+) -> None:
+    for cfg in desired.values():
+        assert pm.stored_form(pm.wire_form(cfg)) == cfg
+        assert cfg["details"]["detector_save"] == "1"
 
 
 def test_template_is_already_in_stored_form(template: dict[str, Any]) -> None:
@@ -168,7 +194,7 @@ def test_plan_kinds(desired: dict[str, dict[str, Any]]) -> None:
         "cam_old": "extra",
     }
     assert got["cam_quay"].changes == (
-        "details.probesize: 1000000000 -> 1000000",
+        'details.probesize: 1000000000 -> "1000000"',  # a stored number now counts as drift
         "height: 480 -> 720",
         "width: 640 -> 1280",
     )
