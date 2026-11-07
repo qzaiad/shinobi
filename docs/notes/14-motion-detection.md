@@ -357,3 +357,191 @@ cam_yard       *                       0    0.0    0.0    0.0    0.0    0.0
   in the same second can't be told apart (prevented here by the 5 s lock).
 - S13 open item `width/height`/`snap`: Shinobi now decodes, but only the detector input; `snap`
   stays off.
+
+
+
+
+how are these pixels connected? is there a predefined algorithm?
+
+Yes. The usual way to determine whether changed pixels are connected is a connected-component algorithm. However, there is an important distinction: the Session 14 material mentions blob filtering, but it does not specify which exact connectivity algorithm Shinobi uses.
+
+### 1. What does “connected” mean?
+
+Imagine a small grid where `1` means a changed pixel and `0` means an unchanged pixel:
+
+```
+0 0 0 0 0
+0 1 1 0 0
+0 1 1 0 1
+0 0 0 0 1
+0 0 0 0 0
+```
+
+There are two separate groups:
+
+- The first group contains 4 connected pixels.
+- The second group contains 2 connected pixels.
+
+The algorithm identifies these groups as separate connected components, often called blobs.
+
+### 2. Two common connectivity rules
+
+4-connectivity
+
+A pixel is connected to its horizontal and vertical neighbours.
+
+8-connectivity
+
+A pixel is connected to its horizontal, vertical, and diagonal neighbours.
+
+Illustrations of the two neighbourhood definitions.
+
+For example, two changed pixels touching only at a corner:
+
+- Are separate under 4-connectivity.
+- Are connected under 8-connectivity.
+
+### 3. How does the algorithm find groups?
+
+A common method is Connected Component Labeling (CCL):
+
+1. Scan the image pixel by pixel.
+2. Find a changed pixel that has not been assigned to a group.
+3. Check its neighbouring pixels according to the chosen connectivity rule.
+4. Continue exploring neighbouring changed pixels, assigning them the same group label.
+5. Repeat until all changed pixels have been processed.
+
+This can be implemented using a flood-fill algorithm or a two-pass labeling algorithm.
+
+### 4. How does this relate to Shinobi?
+
+The Session 14 material tells us that the detector:
+
+- Compares consecutive frames.
+- Measures changed pixels inside each polygon region.
+- Applies blob filtering.
+- Uses sensitivity and consecutive-frame thresholds.
+
+But it does not establish whether Shinobi uses 4-connectivity, 8-connectivity, flood fill, or another implementation. We would need to inspect the actual detector code to confirm that.
+
+Resources
+
+- [Connected-component labeling — Wikipedia](https://en.wikipedia.org/wiki/Connected-component_labeling?utm_source=chatgpt.com)
+- [Flood fill — Wikipedia](https://en.wikipedia.org/wiki/Flood_fill?utm_source=chatgpt.com)
+- Your Session 14 material, motion-detection section.
+
+My Trust: 9/10
+
+Check the uncertain points: The connectivity definitions and algorithms are established computer-vision concepts. The exact algorithm and connectivity rule used by your Shinobi setup remain unverified.
+
+
+“According to the document, at least one blob must reach the configured percentage of the region.”
+is this sensitivity or another threshold?
+
+It is another threshold related to blob size, not the sensitivity threshold itself. They work at different stages.
+
+### The distinction
+
+1. Sensitivity threshold — determines how much pixel change is required for a pixel to be considered changed.
+2. Blob-size threshold — determines whether a connected group of changed pixels is large enough to be accepted.
+3. Consecutive-frame threshold — determines how many consecutive frames must satisfy the detection conditions.
+
+### Example
+
+Suppose the region contains 20,000 pixels:
+
+- Sensitivity is set to 5%.
+- A blob-size threshold is set to 2% of the region.
+- The detector finds a connected blob containing 500 changed pixels.
+
+The blob percentage is:
+
+\\[ \frac{500}{20,000}\times100=2.5\\% \\]
+
+So the blob reaches the 2% threshold.
+
+Important: The 2% blob-size threshold in this example is illustrative. The Session 14 document mentions blob filtering, but does not establish that the blob threshold is configured as a percentage of the region. It also does not provide enough detail to confirm the exact relationship between blob filtering and sensitivity.
+
+In short: sensitivity determines pixel change; blob filtering evaluates the size or shape of groups of changed pixels.
+
+Resources: Your Session 14 document, motion-detection and blob-filtering sections; [Connected-component labeling](https://en.wikipedia.org/wiki/Connected-component_labeling?utm_source=chatgpt.com).
+
+My Trust: 9/10
+
+Check the uncertain points: The conceptual distinction is clear, but the exact blob-filtering parameter and its units in your Shinobi implementation need verification.
+
+
+
+“The threshold parameter specifies how many consecutive detector frames must satisfy the detection conditions.”
+this means that a blob must occur in threshold consecutive frames?
+
+Yes, that's the basic idea — but more precisely, the detection conditions must be satisfied in the required number of consecutive detector frames.
+
+For example, suppose `threshold = 3`:
+
+| Detector frame | Blob meets detection conditions? |
+| -------------- | -------------------------------- |
+| Frame 1        | Yes                              |
+| Frame 2        | Yes                              |
+| Frame 3        | Yes                              |
+| Frame 4        | No                               |
+
+The detection condition is satisfied after the first three consecutive successful frames.
+
+If instead the sequence is:
+
+| Detector frame | Blob meets detection conditions? |
+| -------------- | -------------------------------- |
+| Frame 1        | Yes                              |
+| Frame 2        | No                               |
+| Frame 3        | Yes                              |
+| Frame 4        | Yes                              |
+
+The three-frame requirement has not been met because Frame 2 interrupted the sequence.
+
+Does it have to be the exact same blob?
+
+Not necessarily. The document describes consecutive frames satisfying detection conditions, but it does not establish whether Shinobi tracks the identity of one particular blob across frames or simply checks whether the region passes the detection criteria each time.
+
+So the safest interpretation is: the detection condition must pass for three consecutive frames, not necessarily that the exact same group of pixels must remain unchanged.
+
+My Trust: 9/10
+
+Check the uncertain points: The precise blob-tracking behavior is not established by the Session 14 document.
+
+Resource: Your Session 14 material, section on consecutive-frame thresholds.
+
+
+
+what does live update mean
+
+In your Shinobi motion-detection context, live update means changing a setting while the system is running, rather than stopping the system and restarting or reconfiguring it manually.
+
+### Example
+
+Imagine your camera has motion detection enabled:
+
+1. Shinobi is monitoring the camera.
+2. You change a detection setting in the interface.
+3. You save the change.
+4. Shinobi applies the updated setting while the system is running.
+
+That is a live update.
+
+### Why does it matter in Session 14?
+
+Your document describes a particular issue with live updates:
+
+- A setting such as `detector_save` could be stored as the number `1`.
+- Another part of the code expected the text string `'1'`.
+- Because these values have different data types, the event-saving check could fail.
+- The provisioning fix stores the flags as strings.
+
+So, in this context, a live update is a way of changing configuration without restarting the monitoring process, and the document describes a bug that could occur when applying such changes.
+
+Resource: Your Session 14 document, section discussing the `detector_save` bug and provisioning fix.
+
+My Trust: 10/10
+
+Check the uncertain points: The exact settings that Shinobi can apply live may depend on the version and configuration.
+
