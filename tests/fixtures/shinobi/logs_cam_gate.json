@@ -5,10 +5,10 @@
       "info": {
          "type": "Process Started",
          "msg": {
-            "cmd": "-progress pipe:5 -analyzeduration 1000000 -probesize 1000000 -fflags +igndts -rtsp_transport tcp -loglevel warning -i \"rtsp://mediamtx:8554/cam-gate\"  -rtsp_transport tcp -i \"rtsp://mediamtx:8554/cam-gate-sub\"  -map 0:0 -strict -2 -fflags +genpts+igndts -muxdelay 0 -muxpreload 0 -an -c:v copy -f hls -hls_time 2 -hls_list_size 3 -start_number 0 -hls_allow_cache 0 -hls_flags +delete_segments+omit_endlist+discont_start \"/dev/shm/streams/GROUP_KEY/cam_gate/s.m3u8\"   -map 0:0 -an -vcodec copy -preset veryfast -strict -2 -segment_format_options movflags=faststart -fflags +genpts+igndts -muxdelay 0 -muxpreload 0 -f segment -segment_atclocktime 1 -reset_timestamps 1 -strftime 1 -segment_list pipe:8 -segment_time 900 \"/home/Shinobi/videos/GROUP_KEY/cam_gate/%Y-%m-%dT%H-%M-%S.mp4\"   -map 1:0  -vf \"fps=5\" -s 640x360 -an -c:v pam -pix_fmt gray -f image2pipe pipe:3  "
+            "cmd": "-progress pipe:5 -analyzeduration 1000000 -probesize 1000000 -fflags +igndts -rtsp_transport tcp -loglevel warning -i \"rtsp://mediamtx:8554/cam-gate\"  -rtsp_transport tcp -i \"rtsp://mediamtx:8554/cam-gate-sub\"  -map 0:0 -strict -2 -fflags +genpts+igndts -muxdelay 0 -muxpreload 0 -an -c:v copy -f hls -hls_time 2 -hls_list_size 3 -start_number 0 -hls_allow_cache 0 -hls_flags +delete_segments+omit_endlist+discont_start \"/dev/shm/streams/GROUP_KEY/cam_gate/s.m3u8\"   -map 0:0 -an -vcodec copy -preset veryfast -strict -2 -segment_format_options movflags=faststart -fflags +genpts+igndts -muxdelay 0 -muxpreload 0 -f segment -segment_atclocktime 1 -reset_timestamps 1 -strftime 1 -segment_list pipe:8 -segment_time 900 \"/home/Shinobi/videos/GROUP_KEY/cam_gate/%Y-%m-%dT%H-%M-%S.mp4\"   -map 1:0  -vf \"fps=5\" -s 640x360 -an -c:v pam -pix_fmt gray -f image2pipe pipe:3  -map 1:0 -s 640x360 -vf \"fps=2\" -an -f mjpeg pipe:4  "
          }
       },
-      "time": "2026-11-06T20:35:03.000Z"
+      "time": "2026-11-07T13:37:17.000Z"
    },
    {
       "ke": "GROUP_KEY",
@@ -17,6 +17,6 @@
          "type": "Monitor Stopped",
          "msg": "Monitor session has been ordered to stop."
       },
-      "time": "2026-11-06T20:35:00.000Z"
+      "time": "2026-11-07T13:37:14.000Z"
    }
 ]

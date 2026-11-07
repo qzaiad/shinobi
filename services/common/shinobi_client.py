@@ -219,6 +219,8 @@ class EventBox:
 
     Built-in motion: one box per connected blob of changed pixels, tag = region name,
     confidence = the blob's size in % of its region (pixel-change, Session 14).
+    Object plugin: one box per detected object, tag = class label ("truck"), confidence = the
+    model's score 0..1 (Session 15).
     """
 
     tag: str
@@ -258,6 +260,10 @@ class Event:
     boxes: tuple[EventBox, ...]
     image_size: tuple[int, int] | None  # detector frame (width, height) the boxes refer to
     archived: bool
+    # Object plugins: ms from the plugin receiving the frame to its answer ("time"). Includes
+    # queueing inside the plugin; `time` above is when Shinobi accepted the trigger, so the
+    # frame itself is about processing_ms older (Session 15).
+    processing_ms: int | None = None
 
     @classmethod
     def from_api(cls, raw: Mapping[str, Any]) -> Self:
@@ -273,6 +279,7 @@ class Event:
             boxes=tuple(EventBox.from_api(m) for m in d.get("matrices") or () if m),
             image_size=(w, h) if w and h else None,
             archived=bool(raw.get("archive")),
+            processing_ms=_int_or_none(d.get("time")) if d.get("reason") == "object" else None,
         )
 
     @property
@@ -280,6 +287,11 @@ class Event:
         """Regions that fired (box tags), sorted; falls back to `name` without boxes."""
         tags = sorted({b.tag for b in self.boxes if b.tag})
         return tuple(tags) if tags else (self.name,)
+
+    @property
+    def labels(self) -> tuple[str, ...]:
+        """Object classes in this event (box tags), sorted, unique; () for no boxes."""
+        return tuple(sorted({b.tag for b in self.boxes if b.tag}))
 
 
 class ShinobiClient:
@@ -419,6 +431,13 @@ class ShinobiClient:
         path = self._path("events", mid) if mid else self._path("events")
         return [Event.from_api(e) for e in self._get_json(path, params)]
 
+    def connected_plugins(self) -> dict[str, dict[str, Any]]:
+        """Detector plugins connected right now, by name (pluginKeys key), e.g.
+        {"YoloV9": {"started": ..., "isClientPlugin": True, ...}}. Any valid key works
+        (plain s.auth, libs/plugins.js); {} = none connected."""
+        body = self._get_json(self._path("plugins", "connected"))
+        return dict(body.get("plugins") or {})
+
     def logs(self, mid: str | None = None, *, limit: int = 50) -> list[LogEntry]:
         """Newest log entries (Shinobi's default limit is 50). Needs "Can Get Logs".
 
@@ -528,16 +547,21 @@ def _print_videos(videos: list[Video]) -> None:
 
 
 def _print_events(events: list[Event]) -> None:
-    print(f"{'MONITOR':<14} {'TIME (UTC)':<19} {'REASON':<7} {'CONF':>5}  REGIONS (box %)")
+    # BOXES: motion = region + % of it changed, object = label + score [plugin ms]
+    print(f"{'MONITOR':<14} {'TIME (UTC)':<19} {'REASON':<7} {'CONF':>5}  BOXES")
     for e in events:
-        boxes = ", ".join(f"{b.tag} {b.confidence:.1f}" for b in e.boxes) or e.name
-        print(f"{e.mid:<14} {e.time:%Y-%m-%d %H:%M:%S} {e.reason:<7} {e.confidence:>5.1f}  {boxes}")
+        fmt = ".2f" if e.reason == "object" else ".1f"
+        boxes = ", ".join(f"{b.tag} {b.confidence:{fmt}}" for b in e.boxes) or e.name
+        late = f"  [{e.processing_ms} ms]" if e.processing_ms is not None else ""
+        when = f"{e.time:%Y-%m-%d %H:%M:%S}"
+        print(f"{e.mid:<14} {when} {e.reason:<7} {e.confidence:>5.1f}  {boxes}{late}")
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m services.common.shinobi_client")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("monitors", help="list monitors with their runtime state")
+    sub.add_parser("plugins", help="list connected detector plugins")
     p_vid = sub.add_parser("videos", help="list finished recordings, newest first")
     p_vid.add_argument("mid", nargs="?")
     p_vid.add_argument("--limit", type=int, default=10)
@@ -554,6 +578,12 @@ def main(argv: list[str] | None = None) -> int:
             match args.command:
                 case "monitors":
                     _print_monitors(shinobi.monitors())
+                case "plugins":
+                    plugins = shinobi.connected_plugins()
+                    for name, info in sorted(plugins.items()):
+                        print(f"{name:<14} since {info.get('started', '?')}")
+                    if not plugins:
+                        print("no detector plugin connected")
                 case "videos":
                     _print_videos(shinobi.videos(args.mid, limit=args.limit))
                 case "events":

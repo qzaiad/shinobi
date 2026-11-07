@@ -1,6 +1,7 @@
-"""Motion detection as code: shinobi-config/detection.yaml -> Shinobi monitor `details`.
+"""Motion + object detection as code: shinobi-config/detection.yaml -> Shinobi monitor `details`.
 
-Used by scripts/provision_monitors.py render(); explained in docs/notes/14-motion-detection.md.
+Used by scripts/provision_monitors.py render(); explained in docs/notes/14-motion-detection.md
+(motion) and docs/notes/15-object-detection.md (object).
 
     detection.yaml ──▶ load() ──▶ Detection ──┐
     cameras.yaml (sub stream size + URL) ─────┼─▶ details_for(camera) ─▶ merged into the template
@@ -12,6 +13,13 @@ libs/cameraThread/libs/detectorUtils.js):
     input_maps=[sub stream], input_map_choices.detector    ffmpeg input #1 = /<cam>-sub (input: sub)
     detector_scale_x/y = size of that input                no rescaling, no distorted aspect
     cords = {name: {name, points, sensitivity, ...}}       regions in detector pixels
+
+With an `object:` block, additionally (object detector plugin, frames as MJPEG on pipe:4):
+
+    detector_use_detect_object=1, detectors_selected      JPEGs to the named plugin(s)
+    input_map_choices.detector_object, *_scale_*_object   from the sub stream, at its size
+    detector_fps_object                                   JPEGs per second
+    detector_use_motion                                   1 = only for 5 s after a motion trigger
 
 Region points: `points` = fractions of the frame (0..1, survive a change of detector size) or
 `points_px` = pixels of the detector frame (what Shinobi's region editor shows). Exactly one per
@@ -36,6 +44,9 @@ RENDERED_KEYS = frozenset(
     {
         "detector", "detector_pam", "detector_send_frames", "detector_scale_x",
         "detector_scale_y", "input_maps", "input_map_choices", "cords",
+        "detector_use_detect_object", "detector_send_frames_object", "detector_scale_x_object",
+        "detector_scale_y_object", "detector_fps_object", "detector_use_motion",
+        "detectors_selected",
     }
 )  # fmt: skip
 
@@ -76,10 +87,31 @@ class Region(RegionSettings):
         return self
 
 
+class ObjectSettings(BaseModel):
+    """Object detection (plugin) for one camera; None = take `defaults.object`."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    input: Literal["sub", "main"] | None = None  # stream the JPEGs are cut from
+    fps: float | None = Field(default=None, gt=0, le=30)  # JPEGs per second to the plugin
+    check_motion_first: bool | None = None  # only send while motion triggered (5 s windows)
+    plugins: tuple[str, ...] | None = Field(default=None, min_length=1)  # pluginKeys names
+
+
+class ObjectDefaults(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    input: Literal["sub", "main"] = "sub"
+    fps: float = Field(default=2, gt=0, le=30)
+    check_motion_first: bool = True
+    plugins: tuple[str, ...] = Field(default=("YoloV9",), min_length=1)
+
+
 class CameraDetection(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     input: Literal["sub", "main"] | None = None
+    object: ObjectSettings | None = None  # absent = no object detection
     details: dict[str, Any] = Field(default_factory=dict)
     regions: tuple[Region, ...] = Field(min_length=1)
 
@@ -98,6 +130,7 @@ class Defaults(BaseModel):
     input: Literal["sub", "main"] = "sub"
     details: dict[str, Any] = Field(default_factory=dict)
     region: RegionSettings = RegionSettings()
+    object: ObjectDefaults = ObjectDefaults()
 
 
 class Detection(BaseModel):
@@ -176,20 +209,26 @@ def details_for(
     entry = detection.cameras.get(cam.id)
     if entry is None:
         return {}
-    which = entry.input or detection.defaults.input
     sub = gen_compose.resolve_sub(cam, fleet_defaults)
-    if which == "sub" and sub is None:
-        raise DetectionError(f"{cam.id}: input sub, but the camera has no sub stream")
+    sizes = {"main": (cam.width, cam.height)} | ({"sub": (sub.width, sub.height)} if sub else {})
+    which = entry.input or detection.defaults.input
+    obj = object_settings(entry.object, detection.defaults.object)
+    for what, stream in [("input", which)] + ([("object.input", obj.input)] if obj else []):
+        if stream not in sizes:
+            raise DetectionError(f"{cam.id}: {what} sub, but the camera has no sub stream")
     details: dict[str, Any] = {**detection.defaults.details, **entry.details}
+    # The sub stream is ffmpeg input #1 (#0 = main, primary_input "0:0" keeps record/stream on
+    # it) whenever a detector reads it; a detector on main needs no input map.
+    choices = {**_EMPTY_MAP_CHOICES}
     if which == "sub":
-        assert sub is not None
-        width, height = sub.width, sub.height
+        choices["detector"] = [{"map": "1:0"}]
+    if obj is not None and obj.input == "sub":
+        choices["detector_object"] = [{"map": "1:0"}]
+    if choices != _EMPTY_MAP_CHOICES:
         url = f"{gen_compose.RTSP_BASE}/{cam.id}{gen_compose.SUB_SUFFIX}"
-        # ffmpeg input #1 (#0 = main stream, primary_input "0:0" keeps record/stream on it).
         details["input_maps"] = [_input_map(url)]
-        details["input_map_choices"] = {**_EMPTY_MAP_CHOICES, "detector": [{"map": "1:0"}]}
-    else:
-        width, height = cam.width, cam.height
+        details["input_map_choices"] = choices
+    width, height = sizes[which]
     region_defaults = detection.defaults.region
     details |= {
         "detector": 1,
@@ -199,7 +238,32 @@ def details_for(
         "detector_scale_y": height,
         "cords": {r.name: _cord(r, region_defaults, width, height) for r in entry.regions},
     }
+    if obj is not None:
+        ow, oh = sizes[obj.input]
+        details |= {
+            "detector_use_detect_object": 1,
+            "detector_send_frames_object": 1,  # pipe:4 even with pam on (builders.js)
+            "detector_scale_x_object": ow,  # default 1280x720 = a rescale of the sub stream
+            "detector_scale_y_object": oh,
+            "detector_fps_object": _number(obj.fps),
+            "detector_use_motion": 1 if obj.check_motion_first else 0,
+            "detectors_selected": list(obj.plugins),
+        }
     return details
+
+
+def object_settings(
+    entry: ObjectSettings | None, defaults: ObjectDefaults
+) -> ObjectDefaults | None:
+    """Camera `object:` with the defaults filled in; None = no object detection."""
+    if entry is None:
+        return None
+    given = {k: v for k, v in entry.model_dump().items() if v is not None}
+    return defaults.model_copy(update=given)
+
+
+def _number(x: float) -> int | float:
+    return int(x) if float(x).is_integer() else x
 
 
 # Same keys as the template's input_map_choices (the dashboard always sends all of them).

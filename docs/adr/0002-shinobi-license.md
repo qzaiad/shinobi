@@ -61,4 +61,22 @@ The code enforces part of this: an unactivated install reports `"maxCameras": 15
   Frigate (MIT, detection-focused, MQTT built in), ZoneMinder (GPL-2.0), Viseron (MIT),
   MediaMTX + own recorder + Session 23 detector, or commercial VMS products.
 
+## Addendum 2026-11-07 (Session 15): object detection plugin
+
+The YoloV9 ONNX plugin image (`registry.gitlab.com/shinobi-systems/shinobi-plugins/yolo-v9-onnx`,
+`YOLO_PLUGIN_DIGEST`) is licensed separately. Its `LICENSE` file:
+
+- "AGPL-3.0 License: This OSI-approved open-source license is ideal for students and enthusiasts"
+- "Enterprise License: Designed for commercial use, this license permits seamless integration of
+  Shinobi Systems software and AI models into commercial goods and services, bypassing the
+  open-source requirements of AGPL-3.0."
+
+The bundled YOLOv9 weights come from the YOLOv9 project (GPL-3.0, from memory, not re-checked).
+For this project (education, nothing distributed) AGPL-3.0 is fine. Our derived image
+(`services/yolo-plugin/`) adds files next to the vendor code without editing it; under AGPL,
+offering a modified version over a network obliges publishing its source, which matters only for
+a deployment. A production deployment needs the Enterprise License or a different detector behind
+the same contract (Session 23: own detection path). Check the plugin `LICENSE` whenever
+`YOLO_PLUGIN_DIGEST` changes.
+
 Not legal advice; the license itself says to contact Shinobi Systems when unsure.

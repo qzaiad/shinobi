@@ -21,10 +21,33 @@ services:
       - ./data/shinobi/super.json:/home/Shinobi/super.json
     tmpfs:
       - /dev/shm/streams:size=512m            # live-view segments, RAM only
+    environment:
+      # init.sh writes this into conf.json pluginKeys on every start (replacing hand edits).
+      # Empty key = plugin rejected. Key generated into .env by scripts/shinobi-seed.sh.
+      PLUGIN_KEYS: '{"YoloV9":"${SHINOBI_PLUGIN_KEY:-}"}'
     ports:
       - "127.0.0.1:8080:8080/tcp"
     stop_grace_period: 30s                    # MariaDB flush + PM2 kill_timeout 5 s
     restart: unless-stopped
+
+  # Object detection plugin (docs/notes/15-object-detection.md). socket.io CLIENT: it dials
+  # shinobi:8080 and authenticates with plug "YoloV9" + PLUGIN_KEY; no ports of its own.
+  yolo:
+    build:
+      context: services/yolo-plugin
+      args:
+        YOLO_PLUGIN_DIGEST: ${YOLO_PLUGIN_DIGEST:?set YOLO_PLUGIN_DIGEST in .env}
+    environment:
+      HOST: shinobi
+      PORT: "8080"
+      PLUGIN_KEY: ${SHINOBI_PLUGIN_KEY:-}
+      CONFIDENCE: ${YOLO_CONFIDENCE:-0.5}     # boxes below are dropped inside the plugin
+      ORT_INTRA_OP_THREADS: ${YOLO_THREADS:-2}
+      YOLO_MAX_IN_FLIGHT: ${YOLO_MAX_IN_FLIGHT:-2}  # frames in inference at once; more = dropped
+    cpus: ${YOLO_CPUS:-2}                     # cap: inference must not starve camera ffmpegs
+    depends_on:
+      - shinobi
+    restart: unless-stopped                   # supervise.sh exits when the plugin gives up
 
 volumes:
   shinobi-db:

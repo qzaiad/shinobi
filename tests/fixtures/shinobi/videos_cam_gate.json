@@ -6,64 +6,64 @@
          "ke": "GROUP_KEY",
          "mid": "cam_gate",
          "ext": "mp4",
-         "size": 74923235,
+         "size": 114647539,
          "status": 1,
          "archive": 0,
-         "objects": "",
+         "objects": "truck,car,train,traffic light",
          "saveDir": null,
-         "time": "2026-11-06T20:30:01Z",
-         "end": "2026-11-06T20:35:00Z",
+         "time": "2026-11-07T13:37:21Z",
+         "end": "2026-11-07T13:45:01Z",
          "details": {},
-         "filename": "2026-11-06T20-30-01.mp4",
-         "actionUrl": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-06T20-30-01.mp4",
+         "filename": "2026-11-07T13-37-21.mp4",
+         "actionUrl": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-07T13-37-21.mp4",
          "links": {
-            "deleteVideo": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-06T20-30-01.mp4/delete",
-            "changeToUnread": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-06T20-30-01.mp4/status/1",
-            "changeToRead": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-06T20-30-01.mp4/status/2"
+            "deleteVideo": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-07T13-37-21.mp4/delete",
+            "changeToUnread": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-07T13-37-21.mp4/status/1",
+            "changeToRead": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-07T13-37-21.mp4/status/2"
          },
-         "href": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-06T20-30-01.mp4"
+         "href": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-07T13-37-21.mp4"
       },
       {
          "ke": "GROUP_KEY",
          "mid": "cam_gate",
          "ext": "mp4",
-         "size": 21045745,
+         "size": 48454308,
          "status": 1,
          "archive": 0,
-         "objects": "",
+         "objects": "car,truck,traffic light,train",
          "saveDir": null,
-         "time": "2026-11-06T20:28:36Z",
-         "end": "2026-11-06T20:30:01Z",
+         "time": "2026-11-07T13:34:00Z",
+         "end": "2026-11-07T13:37:14Z",
          "details": {},
-         "filename": "2026-11-06T20-28-36.mp4",
-         "actionUrl": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-06T20-28-36.mp4",
+         "filename": "2026-11-07T13-34-00.mp4",
+         "actionUrl": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-07T13-34-00.mp4",
          "links": {
-            "deleteVideo": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-06T20-28-36.mp4/delete",
-            "changeToUnread": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-06T20-28-36.mp4/status/1",
-            "changeToRead": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-06T20-28-36.mp4/status/2"
+            "deleteVideo": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-07T13-34-00.mp4/delete",
+            "changeToUnread": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-07T13-34-00.mp4/status/1",
+            "changeToRead": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-07T13-34-00.mp4/status/2"
          },
-         "href": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-06T20-28-36.mp4"
+         "href": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-07T13-34-00.mp4"
       },
       {
          "ke": "GROUP_KEY",
          "mid": "cam_gate",
          "ext": "mp4",
-         "size": 1572912,
+         "size": 57958640,
          "status": 1,
          "archive": 0,
-         "objects": "",
+         "objects": "truck,traffic light,car,bus,train",
          "saveDir": null,
-         "time": "2026-11-06T20:20:45Z",
-         "end": "2026-11-06T20:20:50Z",
+         "time": "2026-11-07T13:30:01Z",
+         "end": "2026-11-07T13:33:52Z",
          "details": {},
-         "filename": "2026-11-06T20-20-45.mp4",
-         "actionUrl": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-06T20-20-45.mp4",
+         "filename": "2026-11-07T13-30-01.mp4",
+         "actionUrl": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-07T13-30-01.mp4",
          "links": {
-            "deleteVideo": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-06T20-20-45.mp4/delete",
-            "changeToUnread": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-06T20-20-45.mp4/status/1",
-            "changeToRead": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-06T20-20-45.mp4/status/2"
+            "deleteVideo": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-07T13-30-01.mp4/delete",
+            "changeToUnread": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-07T13-30-01.mp4/status/1",
+            "changeToRead": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-07T13-30-01.mp4/status/2"
          },
-         "href": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-06T20-20-45.mp4"
+         "href": "/API_KEY/videos/GROUP_KEY/cam_gate/2026-11-07T13-30-01.mp4"
       }
    ],
    "endIsStartTo": false

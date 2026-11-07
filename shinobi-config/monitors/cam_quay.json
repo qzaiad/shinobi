@@ -141,10 +141,10 @@
     "detector_fcm_timeout": "",
     "detector_filters": {},
     "detector_fps": "5",
-    "detector_fps_object": "",
+    "detector_fps_object": "2",
     "detector_frame": "0",
     "detector_http_api": "1",
-    "detector_lock_timeout": "5000",
+    "detector_lock_timeout": "2000",
     "detector_max_sensitivity": "",
     "detector_motion_save_frame": "1",
     "detector_motion_tile_mode": "0",
@@ -167,25 +167,25 @@
     "detector_record_overlap": "0",
     "detector_save": "1",
     "detector_scale_x": "640",
-    "detector_scale_x_object": "",
+    "detector_scale_x_object": "640",
     "detector_scale_y": "360",
-    "detector_scale_y_object": "",
+    "detector_scale_y_object": "360",
     "detector_send_frames": "1",
-    "detector_send_frames_object": null,
+    "detector_send_frames_object": "1",
     "detector_send_video_length": "",
     "detector_sensitivity": "",
     "detector_threshold": "1",
     "detector_tile_size": "20",
     "detector_timeout": "0.5",
     "detector_trigger": "0",
-    "detector_use_detect_object": "0",
+    "detector_use_detect_object": "1",
     "detector_use_motion": "1",
     "detector_webhook": "0",
     "detector_webhook_method": null,
     "detector_webhook_timeout": "10",
     "detector_webhook_url": "",
     "detectors_selected": [
-      "all"
+      "YoloV9"
     ],
     "dir": "",
     "event_record_aduration": "1000",
@@ -206,7 +206,11 @@
           "map": "1:0"
         }
       ],
-      "detector_object": [],
+      "detector_object": [
+        {
+          "map": "1:0"
+        }
+      ],
       "detector_sip_buffer": [],
       "record": [],
       "record_timelapse": [],

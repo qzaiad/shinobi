@@ -7,7 +7,7 @@ the string form of `details`, [docs/notes/14-motion-detection.md](../docs/notes/
 | File | Edited by | Content |
 |---|---|---|
 | `monitor.template.json` | hand | settings shared by every monitor, in Shinobi's stored form (`0`, not `"0"`) |
-| `detection.yaml` | hand | motion detection per camera: detector input (sub/main), regions, thresholds ([note 14](../docs/notes/14-motion-detection.md)) |
+| `detection.yaml` | hand | motion detection per camera: detector input (sub/main), regions, thresholds ([note 14](../docs/notes/14-motion-detection.md)); object detection plugin frames: input, fps, check motion first, plugins ([note 15](../docs/notes/15-object-detection.md)) |
 | `monitors/<mid>.json` | **generated** (`render`), do not edit | desired config per camera = template + `sim/cameras.yaml` + `detection.yaml`, top-level `details` values as strings (Shinobi's runtime form) |
 
 Per-camera values (`mid`, `name`, `protocol`, `host`, `port`, `path`, `fps`, `width`, `height`,

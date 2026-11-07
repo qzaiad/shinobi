@@ -23,3 +23,12 @@ for name in conf super; do
     mv "$dst.part" "$dst"
     echo "seeded $dst"
 done
+
+# Plugin pairing key (compose passes it to Shinobi as PLUGIN_KEYS and to the yolo plugin), once.
+# Generated here, before `compose up`, so both containers start with it.
+if [[ -z "$(sed -n 's/^SHINOBI_PLUGIN_KEY=//p' .env)" ]]; then
+    uv run python -c 'import secrets; from pathlib import Path
+from services.common.envfile import update_env
+update_env(Path(".env"), {"SHINOBI_PLUGIN_KEY": secrets.token_hex(24)})'
+    echo "generated SHINOBI_PLUGIN_KEY in .env"
+fi

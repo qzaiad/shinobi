@@ -2,7 +2,6 @@
   "$user": {
     "mail": "super@example.com",
     "pass": "PASSWORD_HASH",
-    "tokens": [],
     "usingDefaultPassword": false,
     "sessionKey": "SESSION_KEY"
   },

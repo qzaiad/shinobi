@@ -5,6 +5,11 @@
 Bounds come from the tuning measurements in docs/notes/14-motion-detection.md: the gate clip has
 ~7-8 vehicle passages per 55 s loop, the quay clip one container lowering per 9.4 s loop; the
 berth edge and quay floor only see camera shake and the loop seam, which must not fire.
+
+Since Session 15, a camera with object detection and check_motion_first (detection.yaml) saves
+no motion rows: its motion triggers only open the plugin's frame window. Those cameras are
+skipped here; set check_motion_first: false to measure their motion regions again
+(docs/notes/15-object-detection.md).
 """
 
 from __future__ import annotations
@@ -21,12 +26,25 @@ from services.common.shinobi_client import ShinobiClient, ShinobiConfig
 pytestmark = pytest.mark.e2e
 
 WINDOW = timedelta(minutes=3)
-LOCK_S = 5  # detection.yaml defaults.details.detector_lock_timeout / 1000
+CONFIG = det.load()
+LOCK_S = CONFIG.defaults.details["detector_lock_timeout"] / 1000
 # region -> (min, max) events per minute over WINDOW
 EXPECTED: dict[str, dict[str, tuple[float, float]]] = {
     "cam_gate": {"gate_lane": (3, 12)},
     "cam_quay": {"hoist": (3, 12), "berth_edge": (0, 0), "restricted_quay": (0, 0)},
 }
+
+
+def motion_saved(mid: str) -> bool:
+    obj = det.object_settings(CONFIG.cameras[mid.replace("_", "-")].object, CONFIG.defaults.object)
+    return not (obj and obj.check_motion_first)
+
+
+@pytest.fixture(autouse=True)
+def _skip_motion_gating_cameras(request: pytest.FixtureRequest) -> None:
+    mid = request.node.callspec.params.get("mid") if hasattr(request.node, "callspec") else None
+    if mid and not motion_saved(mid):
+        pytest.skip(f"{mid}: motion only gates object frames (check_motion_first), no rows")
 
 
 @pytest.fixture(scope="module")
@@ -38,8 +56,7 @@ def events() -> dict[str, list]:
 
 
 def test_expected_regions_match_detection_yaml() -> None:
-    cfg = det.load()
-    for cam_id, entry in cfg.cameras.items():
+    for cam_id, entry in CONFIG.cameras.items():
         mid = cam_id.replace("-", "_")
         assert set(EXPECTED[mid]) == {r.name for r in entry.regions}
 

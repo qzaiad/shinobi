@@ -168,3 +168,64 @@ def test_record_mode_template_has_no_event_recording_trigger() -> None:
     template = pm.load_template(pm.DEFAULT_TEMPLATE)
     assert template["mode"] == "record"
     assert template["details"]["detector_trigger"] == 0
+
+
+# -- object detection (Session 15) ----------------------------------------------------------------
+
+
+def test_object_block_sends_sub_stream_jpegs_to_the_plugin(fleet: gen_compose.Fleet) -> None:
+    d = det.details_for(config(object={}), cam(fleet, "cam-gate"), fleet.defaults)
+    assert d["detector_use_detect_object"] == d["detector_send_frames_object"] == 1
+    assert d["input_map_choices"]["detector_object"] == [{"map": "1:0"}]  # same input #1
+    assert len(d["input_maps"]) == 1  # motion and object share the one sub-stream input
+    # sent at the sub stream's size: Shinobi's default 1280x720 would upscale 640x360
+    assert (d["detector_scale_x_object"], d["detector_scale_y_object"]) == (640, 360)
+    assert (d["detector_fps_object"], d["detector_use_motion"]) == (2, 1)
+    assert d["detectors_selected"] == ["YoloV9"]
+
+
+def test_no_object_block_leaves_template_object_settings(fleet: gen_compose.Fleet) -> None:
+    d = det.details_for(config(), cam(fleet, "cam-gate"), fleet.defaults)
+    assert "detector_use_detect_object" not in d
+    assert d["input_map_choices"]["detector_object"] == []
+
+
+def test_object_settings_fall_back_to_defaults(fleet: gen_compose.Fleet) -> None:
+    detection = det.parse(
+        {
+            "version": 1,
+            "defaults": {"object": {"fps": 1, "check_motion_first": False}},
+            "cameras": {
+                "cam-gate": {
+                    "object": {"fps": 0.5, "plugins": ["A", "B"]},
+                    "regions": [{"name": "r", "points": SQUARE}],
+                }
+            },
+        }
+    )
+    d = det.details_for(detection, cam(fleet, "cam-gate"), fleet.defaults)
+    assert (d["detector_fps_object"], d["detector_use_motion"]) == (0.5, 0)
+    assert d["detectors_selected"] == ["A", "B"]
+
+
+def test_object_on_main_with_motion_on_sub(fleet: gen_compose.Fleet) -> None:
+    d = det.details_for(config(object={"input": "main"}), cam(fleet, "cam-gate"), fleet.defaults)
+    assert d["input_map_choices"]["detector"] == [{"map": "1:0"}]
+    assert d["input_map_choices"]["detector_object"] == []  # input #0 = main stream
+    assert (d["detector_scale_x_object"], d["detector_scale_y_object"]) == (1280, 720)
+
+
+def test_object_sub_input_needs_a_sub_stream(fleet: gen_compose.Fleet) -> None:
+    no_sub = cam(fleet, "cam-gate").model_copy(update={"sub": None})
+    with pytest.raises(det.DetectionError, match="object.input sub"):
+        det.details_for(config(input="main", object={}), no_sub, fleet.defaults)
+
+
+def test_object_keys_cannot_be_overridden() -> None:
+    with pytest.raises(det.DetectionError, match="detector_use_motion"):
+        det.parse({"version": 1, "defaults": {"details": {"detector_use_motion": 0}}})
+
+
+def test_committed_config_detects_objects_on_gate_and_quay() -> None:
+    cfg = det.load()
+    assert {c for c, e in cfg.cameras.items() if e.object is not None} == {"cam-gate", "cam-quay"}

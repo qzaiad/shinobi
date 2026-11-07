@@ -49,7 +49,16 @@ REQUESTS: dict[str, str] = {
     "monitor_unknown": "monitor/{ke}/no_such_monitor",
     "videos_cam_gate": "videos/{ke}/cam_gate?limit=3",
     "logs_cam_gate": "logs/{ke}/cam_gate?limit=2",
-    "events_cam_quay": "events/{ke}/cam_quay?limit=6",  # region-tagged motion events (S14)
+    "events_cam_gate_object": "events/{ke}/cam_gate?limit=6",  # object plugin events (S15)
+    "plugins_connected": "plugins/{ke}/connected",  # detector plugins (S15)
+}
+
+# Recorded once, no longer reproducible with the committed config: kept as they are.
+FROZEN: dict[str, str] = {
+    "events_cam_quay": "S14 region-tagged motion events; since S15 cam_quay's motion only gates "
+    "object frames (check_motion_first) and saves no motion rows",
+    "api_list": "pre-S13 drift (UI-made read key with edit_user/get_alarms) that "
+    "tests/test_shinobi_bootstrap.py parses; the bootstrap has fixed the live keys since",
 }
 # Recorded with SHINOBI_EDIT_API_KEY (Get + Edit Monitors): the unredacted stored configs that
 # scripts/provision_monitors.py compares against. Skipped when that key is not set.
@@ -69,6 +78,8 @@ def secrets_from(env: dict[str, str]) -> dict[str, str]:
     }
     if env.get("SHINOBI_EDIT_API_KEY"):
         out[env["SHINOBI_EDIT_API_KEY"]] = "EDIT_API_KEY"
+    if env.get("SHINOBI_PLUGIN_KEY"):  # never expected in answers: abort if it shows up
+        out[env["SHINOBI_PLUGIN_KEY"]] = ""
     if env.get("SHINOBI_UID"):
         out[env["SHINOBI_UID"]] = "USER_ID"
     if env.get("SHINOBI_ADMIN_EMAIL"):
@@ -156,13 +167,16 @@ def main() -> int:
             texts |= record_sessions(client, env, secrets)
 
     # Redact everything first, write only if ALL files are clean (no half-written set).
-    clean = {name: redact(text, secrets) for name, text in texts.items()}
+    clean = {name: redact(text, secrets) for name, text in texts.items()}  # frozen: checked too
+    clean = {name: text for name, text in clean.items() if name not in FROZEN}
     OUT.mkdir(parents=True, exist_ok=True)
     for name, text in clean.items():
         json.loads(text)  # must still be valid JSON after substitution
         path = OUT / f"{name}.json"
         path.write_text(text if text.endswith("\n") else text + "\n", encoding="utf-8")
         print(f"{path.relative_to(REPO)}  {len(text)} bytes")
+    for name, why in FROZEN.items():
+        print(f"{(OUT / f'{name}.json').relative_to(REPO)}  kept ({why})")
     return 0
 
 

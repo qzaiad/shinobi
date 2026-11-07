@@ -32,6 +32,7 @@ import yaml
 from services.common.envfile import load_env
 from services.common.shinobi_client import (
     MONITOR_COLUMNS,
+    Event,
     MonitorCode,
     ShinobiAuthError,
     ShinobiClient,
@@ -58,6 +59,8 @@ ROUTES: dict[str, bytes] = {
     "/API_KEY/videos/GROUP_KEY/cam_gate": fixture("videos_cam_gate"),
     "/API_KEY/logs/GROUP_KEY/cam_gate": fixture("logs_cam_gate"),
     "/API_KEY/events/GROUP_KEY/cam_quay": fixture("events_cam_quay"),
+    "/API_KEY/events/GROUP_KEY/cam_gate": fixture("events_cam_gate_object"),
+    "/API_KEY/plugins/GROUP_KEY/connected": fixture("plugins_connected"),
 }
 
 
@@ -367,3 +370,38 @@ def test_events_bare_array_with_region_boxes(client: ShinobiClient, fake: FakeSh
     assert set(first.regions) <= {"hoist", "berth_edge", "restricted_quay"}
     assert all(0 < b.confidence <= 100 for e in events for b in e.boxes)
     assert [e.time for e in events] == sorted((e.time for e in events), reverse=True)
+
+
+def test_object_events_carry_labels_scores_and_plugin_time(client: ShinobiClient) -> None:
+    events = client.events("cam_gate", limit=6)
+    assert {(e.plug, e.reason) for e in events} == {("YoloV9", "object")}
+    assert all(e.image_size == (640, 360) for e in events)  # boxes in sub-stream pixels
+    assert all(0 < b.confidence <= 1 for e in events for b in e.boxes)  # model score, not %
+    assert all(e.processing_ms is not None and e.processing_ms > 0 for e in events)
+    assert all(set(e.labels) == {b.tag for b in e.boxes} for e in events)
+
+
+def test_labels_are_unique_and_sorted() -> None:
+    box = {"x": 0, "y": 0, "width": 1, "height": 1, "confidence": 0.9}
+    matrices = [box | {"tag": "truck"}, box | {"tag": "car"}, box | {"tag": "car"}]
+    details = {"reason": "object", "matrices": matrices}
+    raw = {"mid": "m", "time": "2026-11-07T13:42:19.000Z", "details": details}
+    assert Event.from_api(raw).labels == ("car", "truck")
+
+
+def test_motion_events_have_no_processing_time(client: ShinobiClient) -> None:
+    assert all(e.processing_ms is None for e in client.events("cam_quay"))
+
+
+def test_connected_plugins_by_name(client: ShinobiClient, fake: FakeShinobi) -> None:
+    plugins = client.connected_plugins()
+    assert fake.requests[-1].url.path == "/API_KEY/plugins/GROUP_KEY/connected"
+    assert set(plugins) == {"YoloV9"}
+    assert plugins["YoloV9"]["isClientPlugin"] is True  # the plugin dialled Shinobi
+
+
+def test_no_plugin_connected_is_empty() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"ok": True, "plugins": {}})
+
+    assert client_with(handler).connected_plugins() == {}

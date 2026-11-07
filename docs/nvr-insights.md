@@ -18,7 +18,7 @@ Line numbers are from the commit that last updated the bullet; if a note was edi
 | 06 | notes/06-realism.md | CP | camera-profile.md |
 | 07 | notes/07-fault-injection.md | A1, A2 | adr/0001-…, adr/0002-… |
 | LP | learning-plan.md | 13 | notes/13-shinobi-cheatsheet.md |
-| 14 | notes/14-motion-detection.md | | |
+| 14 | notes/14-motion-detection.md | 15 | notes/15-object-detection.md |
 
 **[+]** = my addition, not observed in a note (best practice or inference). Verify before relying on it.
 
@@ -27,7 +27,7 @@ Line numbers are from the commit that last updated the bullet; if a note was edi
 2. Mark bullets a new finding contradicts or resolves (`~~old~~ → see [13 §x]`), don't delete them silently.
 3. Add the note to the coverage table and a line to the changelog at the bottom.
 
-**Coverage.** Ingested: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, CP, A1, A2, theory/.
+**Coverage.** Ingested: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, CP, A1, A2, theory/.
 Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 
 ---
@@ -53,6 +53,7 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - **[+]** Audit trail: who viewed, exported or deleted which footage (hinted by Shinobi's silent deletes, [10 L443](notes/10-recording-storage.md#L443)).
 - **[+]** Clock/NTP health per camera and per server, since evidence depends on it.
 - **Motion zones per camera** (lane, hoist, restricted area) with per-zone thresholds; events name the zone. [14 §5 L143](notes/14-motion-detection.md#L143)
+- **Object events** (what, not just "something changed"): label + score + box per object, the frame kept as evidence, motion-gated to save compute. [15 §10 L333](notes/15-object-detection.md#L333), [15 §9 L293](notes/15-object-detection.md#L293)
 
 ## 2. Expected problems
 
@@ -150,6 +151,16 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - Merged multi-zone events average the confidences and hide the zone names in box tags. [14 §3 L100](notes/14-motion-detection.md#L100)
 - Event rows with whole-second time and no id can't be told apart within a second. [14 §11 L356](notes/14-motion-detection.md#L356)
 
+### 2.9 Object detection
+- **Unbounded detector queue → congestion collapse:** frames pushed without backpressure; a short burst made parallel inferences slower than arrivals, latency grew to 52 s in 3 min and never recovered. Max-in-flight + drop fixed it (same load, 0 drops, ≤ 0.5 s). [15 §8 L246-291](notes/15-object-detection.md#L246)
+- **Event time = arrival time,** not frame time: a late detection is an event about the past. Carry capture time with every frame. [15 §8.1 L273](notes/15-object-detection.md#L273)
+- **Thread pools sized from host cores** (ONNX Runtime: 14 spinning threads) waste 5× CPU, and under a cgroup quota run 10× slower. Set threads explicitly. [15 §6 L170-207](notes/15-object-detection.md#L170)
+- **"Up" but dead:** the plugin gave up reconnecting after 5 (effectively ~2) failed attempts and kept running; a Shinobi restart or a cold start silently ends detection. [15 §7 L209-244](notes/15-object-detection.md#L209)
+- **Coupled locks:** one per-camera lock for motion and object triggers; a motion trigger holds it for the whole frame window, so object results are dropped (2/min instead of 9). [15 §9 L293-331](notes/15-object-detection.md#L293)
+- Motion-first gating: motion triggers stop producing events of their own; whoever relied on motion rows loses them. [15 §9 L311](notes/15-object-detection.md#L311)
+- COCO has no port classes (containers, cranes, reach stackers): yard 0 detections; fixed false positives (gate "traffic light" in 33 % of events). [15 §5 L151](notes/15-object-detection.md#L151), [15 §12 L366](notes/15-object-detection.md#L366)
+- Sending 1280×720 to a model that letterboxes to 640 costs 4× pixels for nothing (Shinobi's default object size). [15 §4 L121](notes/15-object-detection.md#L121)
+
 ## 3. Security considerations
 
 - **Keys in URL paths leak** (proxy logs, shell history, `Referer`, client debug logs, and in the server's own answers). Use an `Authorization` header plus short-lived signed URLs for `<video>`/`<img>`. [11 §2 L62](notes/11-shinobi-api.md#L62), [11 §5 L192-204](notes/11-shinobi-api.md#L192)
@@ -173,6 +184,8 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - **Recordings show people:** privacy/GDPR, access control, retention limits. [01 §5 L157](notes/01-repo-bootstrap.md#L157)
 - **License / clean room:** Shinobi Pro is a source-available EULA (commercial use at ≥ 15 monitors, contributed code becomes theirs). Don't copy its code into our own NVR; learn behaviour from observation and docs. [A2 L13-30](adr/0002-shinobi-license.md#L13)
 - Images can carry secrets (an upstream CI token in `git remote -v`). Never paste that output. [A2 L58](adr/0002-shinobi-license.md#L58)
+- Detector pairing keys are printed in clear text by both sides' logs (plugin entrypoint, Shinobi connect log). Never log secrets; logs are often shipped to third parties. [15 §3 L113](notes/15-object-detection.md#L113)
+- Detector plugins are separately licensed (YoloV9 plugin AGPL-3.0 / Enterprise, weights GPL-3.0). [15 §3 L87](notes/15-object-detection.md#L87), [A2 addendum](adr/0002-shinobi-license.md)
 - Pin images by digest, and pin downloaded assets by sha256 over https. [08 §5 L182](notes/08-shinobi-install.md#L182), [03 L7-15](notes/03-port-footage.md#L7)
 - **[+]** TLS for UI/API and RTSPS/SRTP where cameras support it. Put cameras on an isolated VLAN.
 - **[+]** Integrity of evidence: hash each finished segment, keep the hashes in an append-only log, and keep an export chain of custody.
@@ -189,6 +202,8 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - **Control plane** (API, config, retention, events) in Python/FastAPI, matching the repo conventions. **[+]** Go is a good alternative for a single static binary with many concurrent workers.
 - **[+]** Consider delegating ingest/live view to MediaMTX (it proxies, records and serves WebRTC/HLS; see theory/MediaMTX.md) and building only the recording index, retention, detection and events.
 - Detection reads the **sub stream** (3.4–5.3× cheaper to decode). The detector downscales to its input size anyway. [10 §7.1 L389-414](notes/10-recording-storage.md#L389), [06 §2 L72](notes/06-realism.md#L72)
+- **Detector as a separate service** behind a small protocol (frame in, boxes out), with: bounded in-flight work and a drop policy (per camera, fair), explicit thread counts, capture timestamps on frames and results, and "exit when you give up" so the supervisor restarts it. [15 §8.2 L277](notes/15-object-detection.md#L277), [15 §6.2 L189](notes/15-object-detection.md#L189), [15 §7 L209](notes/15-object-detection.md#L209)
+- Detector input = what the model uses: sub stream at native size, a few fps, gated by motion; results in detector pixels + frame size. [15 §4 L121](notes/15-object-detection.md#L121), [15 §10 L333](notes/15-object-detection.md#L333)
 - Prefer **push** (WebSocket/MQTT) for status and "segment finished". Polling misses short events. [11 §1 L29-37](notes/11-shinobi-api.md#L29)
 - **[+]** Plain WebSocket + JSON (or MQTT over WS) rather than socket.io, whose layered protocol needs special clients. [11 §7 L223-235](notes/11-shinobi-api.md#L223)
 
@@ -248,6 +263,8 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - Discriminating experiments (one variable, a control camera) before changing thresholds: "no events" was a server bug, not tuning. [14 §8 L264-287](notes/14-motion-detection.md#L264)
 - **[+]** Property tests for the index/retention logic (random segment streams, crashes, clock jumps).
 
+- Detector e2e: plugin connected, labelled events per minute, **latency p90 bound** (catches queue growth), recorded object-event fixtures. Measure CPU per frame with the thread count pinned. [15 §11 L356](notes/15-object-detection.md#L356)
+
 ### 4.7 Docker
 - `init: true` (tini), signal trap in wrappers, `stop_grace_period` long enough to finalize segments. [05 §6 L403-481](notes/05-camera-fleet.md#L403), [08 §2 L83](notes/08-shinobi-install.md#L83)
 - Code in the image, only data mounted. Pin by digest. [08 §5 L169-188](notes/08-shinobi-install.md#L169), [A1 L40-42](adr/0001-shinobi-image-and-database.md#L40)
@@ -259,6 +276,7 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 
 ### 4.8 Kubernetes and scaling
 - Per-camera cost to budget: copy-record ≈ 1 %, ~100 MB RSS per camera (two processes); decode main 12–19 %, sub 3.4 %; transcode 40–141 %. [09 §4 L122](notes/09-shinobi-monitor.md#L122), [10 §7 L380-406](notes/10-recording-storage.md#L380)
+- Object detection on CPU: yolov9t ≈ 220 ms CPU per 640×360 frame (≈ 450 ms in the plugin incl. decode/HTTP); 2 motion-gated cameras at 2 fps ≈ 1 core. Event frames ≈ 170–230 MB/camera/day. [15 §6.2 L189](notes/15-object-detection.md#L189), [15 §12 L366](notes/15-object-detection.md#L366), [15 §10 L351](notes/15-object-detection.md#L351)
 - Storage sizing: 10.5 Mb/s for 4 cameras ≈ 113 GB/day. [10 §5.3 L328-339](notes/10-recording-storage.md#L328)
 - The provisioner is a reconcile loop, the same pattern as a Kubernetes controller. [12 §1 L34](notes/12-monitors-as-code.md#L34)
 - Port scale = hundreds of cameras (Shinobi license needs Enterprise > 150), so design for sharding from the start. [A2 L19-22](adr/0002-shinobi-license.md#L19), [07 §1 L22](notes/07-fault-injection.md#L22)
@@ -284,7 +302,7 @@ P0 = must work before anything else; each step has a "done when".
 | P1 | Live view: low-latency (fMP4/WebRTC via MediaMTX), HLS fallback | latency < 2 s measured via OSD vs host clock | [09 §6-7](notes/09-shinobi-monitor.md#L332) |
 | P1 | Snapshots from sub stream / camera HTTP, honest errors | no placeholder ever returned | [11 §6](notes/11-shinobi-api.md#L206), [06 §5](notes/06-realism.md#L316) |
 | P2 | Motion detection on sub stream (zones, thresholds, hot-applied) | sane event rate on port clips (gate ≈ passages/loop, 0 on quiet road), no restart on tuning, events still saved after hot-apply | [06 §2](notes/06-realism.md#L48), [14 §10 L324](notes/14-motion-detection.md#L324) |
-| P2 | Object detection via detector service (shared `Detection` schema) | labels + confidences on events | [LP S15, S23](learning-plan.md#L158) |
+| P2 | Object detection via detector service (shared `Detection` schema), bounded queue, capture timestamps | labels + confidences on events; latency p90 bounded under 2× overload; restart of either side recovers by itself | [LP S15, S23](learning-plan.md#L158), [15 §8 L246](notes/15-object-detection.md#L246), [15 §7 L209](notes/15-object-detection.md#L209) |
 | P2 | Event-triggered recording with pre/post buffer | clip contains the 5 s before the event | [09 §8](notes/09-shinobi-monitor.md#L414) |
 | P2 | Multi-tenant users/groups, RBAC, login rate limit, audit log | permission matrix tests pass | [08 §7-8](notes/08-shinobi-install.md#L229) |
 | P3 | Scaling: sharded workers, separate DB, object storage, Prometheus | 16+ cameras, first bottleneck measured | [LP S34](learning-plan.md#L273), [4.8](#48-kubernetes-and-scaling) |
@@ -298,6 +316,8 @@ P0 = must work before anything else; each step has a "done when".
 - ~~Does a deleted key keep working until restart (cache)?~~ → no, via API it stops at once. [11 §9 L344](notes/11-shinobi-api.md#L344), [13 §2 L77](notes/13-shinobi-cheatsheet.md#L77)
 - Does `sqllog` (double-encoded) actually put non-forced messages into the DB? [13 §10 L400](notes/13-shinobi-cheatsheet.md#L400). Flags are now stored as strings (S14), still not re-tested. [14 §8 L306](notes/14-motion-detection.md#L306)
 - Do webhooks fire after a hot-apply now that flags are strings? (S17) [14 §11 L352](notes/14-motion-detection.md#L352)
+- Is a hung (not crashed) plugin Python server detected by anything? No healthcheck yet. [15 §15 L436](notes/15-object-detection.md#L436)
+- Fair per-camera frame dropping vs our global max-in-flight. [15 §15 L436](notes/15-object-detection.md#L436)
 - Should cameras optionally publish over UDP to test real picture corruption? [07 Open L310](notes/07-fault-injection.md#L310)
 
 ## Changelog
@@ -307,6 +327,7 @@ P0 = must work before anything else; each step has a "done when".
 | 2026-10-31 | 01–12, CP, A1, A2, theory/ | initial version |
 | 2026-10-31 | 13 | DR use case; coercion, generated ids, orphan sweep, hidden stream errors, backups as secrets; key-cache question resolved |
 | 2026-11-06 | 14 | motion zones use case; 2.8 motion detection problems; coercion bullet refined (hot-apply bug); sub-stream detector, normalised zones, wire/runtime form, tuning tests |
+| 2026-11-07 | 15 | object events use case; 2.9 object detection problems (queue collapse, arrival-time stamps, thread pools, give-up-but-running, coupled lock); key-in-logs + plugin license; detector service design; CPU per frame |
 
 
 ```

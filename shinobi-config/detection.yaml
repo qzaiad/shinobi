@@ -16,20 +16,34 @@
 #   max_sensitivity   triggers above this % are dropped               (default: none)
 #   threshold         consecutive detector frames over sensitivity    (default 1)
 #   color_threshold   min brightness change (0..255) of one pixel     (default 9)
+# object:             object detection plugin (docs/notes/15-object-detection.md); absent = off.
+#   input             sub | main: stream the JPEGs are cut from, sent at that stream's size
+#   fps               JPEGs per second sent to the plugin
+#   check_motion_first  true = frames only flow for 5 s after a motion trigger, and motion
+#                     triggers then save no Events row of their own (only object events)
+#   plugins           pluginKeys names (detectors_selected), e.g. [YoloV9]
 version: 1
 
 defaults:
   input: sub
   details:
     detector_fps: 5            # frames compared per second
-    detector_lock_timeout: 5000  # ms between accepted events (Shinobi default 2000): ~1 per activity burst
+    # ms between accepted events (motion AND object share this one lock). 5000 (S14) starved
+    # object events: a motion trigger opens a 5 s frame window and holds the lock for all of it.
+    detector_lock_timeout: 2000
   region:
     sensitivity: 2
     color_threshold: 9
     threshold: 1
+  object:
+    input: sub
+    fps: 2
+    check_motion_first: true
+    plugins: [YoloV9]
 
 cameras:
   cam-gate:
+    object: {}
     regions:
       - name: gate_lane        # road in front of the gate, both lanes; OSD camera id cut out
         points: [[0, 0.76], [1, 0.76], [1, 0.92], [0.86, 0.92], [0.86, 1], [0, 1]]
@@ -37,6 +51,7 @@ cameras:
         threshold: 2           # 2 frames = 0.4 s at 5 fps
 
   cam-quay:
+    object: {}
     regions:
       - name: hoist            # container path under the crane spreader, above the truck
         points: [[0.40, 0.15], [0.64, 0.15], [0.64, 0.48], [0.40, 0.48]]
