@@ -294,6 +294,19 @@ class Event:
         return tuple(sorted({b.tag for b in self.boxes if b.tag}))
 
 
+@dataclass(frozen=True, slots=True)
+class TriggerResult:
+    """Answer of GET /<key>/motion/<ke>/<mid>?data=...: did Shinobi accept the injected event?
+
+    triggered=False with a reason is NOT an error: the event went through triggerEvent() and was
+    dropped on purpose (event filter, motion lock, region check; libs/events/utils.js).
+    """
+
+    triggered: bool
+    reason: str = ""  # e.g. "Ignored by Event Filters", "Ignored : Motion Lock"
+    msg: str = ""
+
+
 class ShinobiClient:
     """Shinobi API client; one pooled HTTP connection set per instance.
 
@@ -430,6 +443,25 @@ class ShinobiClient:
             params["limit"] = str(limit)
         path = self._path("events", mid) if mid else self._path("events")
         return [Event.from_api(e) for e in self._get_json(path, params)]
+
+    def trigger(self, mid: str, details: Mapping[str, Any]) -> TriggerResult:
+        """Inject a synthetic detector event (needs "Can Control Monitors"), as if a detector had
+        sent `details` ({plug, name, reason, confidence | matrices, imgWidth, imgHeight}).
+
+        It runs the same triggerEvent() as a real detection: event filters, motion lock,
+        object regions, then Events row / webhooks / recording. Blocked unless the monitor's
+        detector_http_api allows it ("1" = always, the template default).
+        """
+        r = self._get(self._path("motion", mid), {"data": json.dumps(details)})
+        body = r.json()
+        if not isinstance(body, dict):
+            raise ShinobiError(f"unexpected trigger answer: {str(body)[:200]}")
+        if body.get("ok") is not False:
+            return TriggerResult(triggered=True, msg=str(body.get("msg", "")))
+        if "triggered" in body:  # went through triggerEvent() and was dropped there
+            return TriggerResult(False, str(body.get("reason", "")), str(body.get("msg", "")))
+        self._check(body)  # auth / unknown monitor / blocked: raises
+        raise ShinobiError(f"trigger refused: {body.get('msg', '')}")  # pragma: no cover
 
     def connected_plugins(self) -> dict[str, dict[str, Any]]:
         """Detector plugins connected right now, by name (pluginKeys key), e.g.

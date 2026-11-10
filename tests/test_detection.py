@@ -229,3 +229,84 @@ def test_object_keys_cannot_be_overridden() -> None:
 def test_committed_config_detects_objects_on_gate_and_quay() -> None:
     cfg = det.load()
     assert {c for c, e in cfg.cameras.items() if e.object is not None} == {"cam-gate", "cam-quay"}
+
+
+# -- event filters (Session 16) -------------------------------------------------------------------
+
+LIGHT = {"name": "no_light", "drop": "on_match", "where": [["tag", "===", "traffic light"]]}
+
+
+def test_filters_render_in_the_dashboard_shape(fleet: gen_compose.Fleet) -> None:
+    keep_big = {"name": "big", "drop": "on_no_match", "join": "or",
+                "where": [["width", ">=", 20], ["height", ">=", 0.5]]}  # fmt: skip
+    d = det.details_for(config(object={"filters": [LIGHT, keep_big]}), cam(fleet, "cam-gate"),
+                        fleet.defaults)  # fmt: skip
+    assert d["use_detector_filters"] == 1
+    assert d["detector_filters"]["no_light"] == {
+        "id": "no_light", "enabled": "1", "filter_name": "no_light",
+        "where": [{"p1": "tag", "p2": "===", "p3": "traffic light", "p4": "&&",
+                   "openBracket": "0", "closeBracket": "0"}],
+        "actions": {"halt": "1", "save": "", "indifference": "", "webhook": "", "command": "",
+                    "record": ""},
+    }  # fmt: skip
+    big = d["detector_filters"]["big"]
+    assert big["actions"]["halt"] == "2"
+    assert [(w["p3"], w["p4"]) for w in big["where"]] == [("20", "||"), ("0.5", "||")]
+
+
+def test_no_filters_switch_filtering_off(fleet: gen_compose.Fleet) -> None:
+    d = det.details_for(config(object={}), cam(fleet, "cam-gate"), fleet.defaults)
+    assert (d["use_detector_filters"], d["detector_filters"]) == (0, {})
+
+
+def test_camera_filters_replace_default_filters(fleet: gen_compose.Fleet) -> None:
+    detection = det.parse({
+        "version": 1,
+        "defaults": {"object": {"filters": [LIGHT]}},
+        "cameras": {
+            "cam-gate": {"object": {}, "regions": [{"name": "r", "points": SQUARE}]},
+            "cam-quay": {"object": {"filters": []}, "regions": [{"name": "r", "points": SQUARE}]},
+        },
+    })  # fmt: skip
+    gate = det.details_for(detection, cam(fleet, "cam-gate"), fleet.defaults)
+    quay = det.details_for(detection, cam(fleet, "cam-quay"), fleet.defaults)
+    assert list(gate["detector_filters"]) == ["no_light"]
+    assert quay["detector_filters"] == {}
+
+
+@pytest.mark.parametrize(
+    ("flt", "message"),
+    [
+        (
+            {**LIGHT, "where": [["tag", "===", "person"], ["confidence", "<", 0.6]]},
+            "exactly one condition",
+        ),  # S16 §5: deletes unrelated boxes
+        ({**LIGHT, "where": [["tag", "<", 3]]}, "numeric field"),
+        ({**LIGHT, "where": [["confidence", ">", "high"]]}, "must be a number"),
+        ({**LIGHT, "where": [["width", "indexOf", 3]]}, "indexOf is for tags"),
+        ({**LIGHT, "where": [["time", ">", 3]]}, "where.0.field"),
+        ({**LIGHT, "where": [["tag", "==="]]}, r"\[field, op, value\]"),
+        ({**LIGHT, "where": []}, "at least 1"),
+        ({**LIGHT, "name": "no light"}, "name"),
+    ],
+)
+def test_invalid_filters_are_refused(flt: dict[str, Any], message: str) -> None:
+    with pytest.raises(det.DetectionError, match=message):
+        config(object={"filters": [flt]})
+
+
+def test_duplicate_filter_names_are_refused() -> None:
+    with pytest.raises(det.DetectionError, match="duplicate filter names"):
+        config(object={"filters": [LIGHT, LIGHT]})
+
+
+def test_filters_survive_shinobi_storage(fleet: gen_compose.Fleet) -> None:
+    """Comparisons (<, >) and "1" flags inside detector_filters are stored as sent."""
+    detection = det.parse({"version": 1, "cameras": {"cam-gate": {
+        "object": {"filters": [LIGHT, {"name": "small", "drop": "on_match",
+                                       "where": [["height", "<", 12]]}]},
+        "regions": [{"name": "r", "points": SQUARE}]}}})  # fmt: skip
+    desired = pm.render(fleet, pm.load_template(pm.DEFAULT_TEMPLATE), detection)
+    cfg = desired["cam_gate"]
+    assert cfg["details"]["use_detector_filters"] == "1"
+    assert pm.stored_form(pm.wire_form(cfg)) == cfg

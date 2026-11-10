@@ -136,10 +136,12 @@ def kinds(steps: list[sb.Step]) -> dict[str, str]:
 
 
 def test_committed_spec(spec: sb.Spec) -> None:
-    read, edit = spec.api_keys
+    read, edit, trigger = spec.api_keys
     assert read.env == "SHINOBI_API_KEY" and "edit_monitors" not in read.permissions
     assert "edit_user" not in read.permissions  # least privilege: read key cannot edit the account
     assert edit.permissions == {"get_monitors", "edit_monitors"}
+    # S16: injects synthetic events only; cannot read configs or edit anything
+    assert trigger.permissions == {"control_monitors"}
     assert spec.account_details["use_remote_access"] == "0"
     details = read.details()
     assert set(details) == set(sb.KEY_PERMISSIONS) | set(sb.KEY_DETAILS_BASE)
@@ -255,14 +257,15 @@ def test_extra_key_kept_unless_prune(spec: sb.Spec, creds: sb.Credentials) -> No
     assert kinds(apply(api, spec, creds, env))["api key #1 not in account.yaml"] == "extra"
     assert extra in api.keys
     apply(api, spec, creds, env, prune=True)
-    assert extra not in api.keys and len(api.keys) == 2
+    assert extra not in api.keys and len(api.keys) == len(spec.api_keys)
 
 
 def test_dry_run_writes_nothing(spec: sb.Spec, creds: sb.Credentials) -> None:
     api = FakeShinobi()
     steps, updates = sb.run(api, spec, creds, dict(ENV), dry_run=True, log=lambda _: None)
     assert api.writes == [] and updates == {}
-    assert [s.kind for s in steps] == ["update", "create", "create", "create", "env"]
+    creates = ["create"] * (1 + len(spec.api_keys))  # account + one per key
+    assert [s.kind for s in steps] == ["update", *creates, "env"]
 
 
 def test_wrong_admin_password_stops_after_one_try(spec: sb.Spec, creds: sb.Credentials) -> None:

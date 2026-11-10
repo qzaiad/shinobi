@@ -62,7 +62,8 @@ def test_every_configured_plugin_is_connected(api: ShinobiClient) -> None:
 @pytest.mark.parametrize("mid", sorted(EXPECTED))
 def test_labelled_object_events_arrive(events: dict[str, list[Event]], mid: str) -> None:
     minimum, labels = EXPECTED[mid]
-    objects = [e for e in events[mid] if e.reason == "object"]
+    # real plugin answers only: tests/test_event_filters.py injects events with plug e2e-inject
+    objects = [e for e in events[mid] if e.reason == "object" and e.plug != "e2e-inject"]
     rate = len(objects) / (WINDOW.total_seconds() / 60)
     assert rate >= minimum, f"{mid}: {rate:.1f} object events/min, want >= {minimum}"
     seen = Counter(label for e in objects for label in e.labels)

@@ -19,6 +19,7 @@ Line numbers are from the commit that last updated the bullet; if a note was edi
 | 07 | notes/07-fault-injection.md | A1, A2 | adr/0001-…, adr/0002-… |
 | LP | learning-plan.md | 13 | notes/13-shinobi-cheatsheet.md |
 | 14 | notes/14-motion-detection.md | 15 | notes/15-object-detection.md |
+| 16 | notes/16-detection-quality.md | | |
 
 **[+]** = my addition, not observed in a note (best practice or inference). Verify before relying on it.
 
@@ -27,7 +28,7 @@ Line numbers are from the commit that last updated the bullet; if a note was edi
 2. Mark bullets a new finding contradicts or resolves (`~~old~~ → see [13 §x]`), don't delete them silently.
 3. Add the note to the coverage table and a line to the changelog at the bottom.
 
-**Coverage.** Ingested: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, CP, A1, A2, theory/.
+**Coverage.** Ingested: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, CP, A1, A2, theory/.
 Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 
 ---
@@ -160,6 +161,12 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - Motion-first gating: motion triggers stop producing events of their own; whoever relied on motion rows loses them. [15 §9 L311](notes/15-object-detection.md#L311)
 - COCO has no port classes (containers, cranes, reach stackers): yard 0 detections; fixed false positives (gate "traffic light" in 33 % of events). [15 §5 L151](notes/15-object-detection.md#L151), [15 §12 L366](notes/15-object-detection.md#L366)
 - Sending 1280×720 to a model that letterboxes to 640 costs 4× pixels for nothing (Shinobi's default object size). [15 §4 L121](notes/15-object-detection.md#L121)
+- **Measured quality (COCO YOLOv9t, 640×360, score 0.5):** precision 79 %, COCO recall 33 %, port recall 9 %, 0 false events. Reported boxes are mostly right; most of the port is invisible. [16 §6 L292](notes/16-detection-quality.md#L292)
+- **Box convention ≠ model's:** a truck with an empty skeletal trailer is boxed as the tractor only (IoU ≈ 0.42 with the full truck): right event, useless extent. Gate: 9 such boxes are FP at IoU 0.5, all TP at 0.3. [16 §7.1 L336](notes/16-detection-quality.md#L336)
+- Small objects: a 15 px person scores 0.31–0.57 frame to frame while standing still; no threshold makes it reliable, only more pixels. [16 §7.2 L354](notes/16-detection-quality.md#L354)
+- An object filling the frame (ship hull at close range) is never detected: camera placement limits recall more than the model. [16 §7.3 L362](notes/16-detection-quality.md#L362)
+- **Shinobi event filters are box-ordered, not per-box AND:** box 0 matching a drop filter drops the whole event (wanted objects too); other matching boxes are deleted one by one, per condition. Filters run before the lock. [16 §5.2 L200](notes/16-detection-quality.md#L200)
+- **[+]** Give event filters per-box semantics (all conditions on the same box) and an explicit action per box vs per event.
 
 ## 3. Security considerations
 
@@ -263,6 +270,10 @@ Skipped on purpose: `*-explained.md` (long-form versions of the same sessions).
 - Discriminating experiments (one variable, a control camera) before changing thresholds: "no events" was a server bug, not tuning. [14 §8 L264-287](notes/14-motion-detection.md#L264)
 - **[+]** Property tests for the index/retention logic (random segment streams, crashes, clock jumps).
 
+- **Labelled frame set + scorer** (TP/FP/FN, IoU 0.5, ignore labels, threshold sweep, event view) on the *same JPEGs* the detector gets live (reproduce both encodes; MJPEG rate control needs a warm-up pass). [16 §3.1 L66](notes/16-detection-quality.md#L66), [16 §4 L126](notes/16-detection-quality.md#L126)
+- **Audit labels against predictions** before believing numbers: 30 label mistakes in 474 boxes turned quay recall 100 % (false) into 58 %. [16 §3.3 L106](notes/16-detection-quality.md#L106)
+- Emulate the server's filter logic for offline numbers and keep the emulator honest with an e2e test that injects synthetic events (trigger API). [16 §5.4 L259](notes/16-detection-quality.md#L259)
+
 - Detector e2e: plugin connected, labelled events per minute, **latency p90 bound** (catches queue growth), recorded object-event fixtures. Measure CPU per frame with the thread count pinned. [15 §11 L356](notes/15-object-detection.md#L356)
 
 ### 4.7 Docker
@@ -318,6 +329,7 @@ P0 = must work before anything else; each step has a "done when".
 - Do webhooks fire after a hot-apply now that flags are strings? (S17) [14 §11 L352](notes/14-motion-detection.md#L352)
 - Is a hung (not crashed) plugin Python server detected by anything? No healthcheck yet. [15 §15 L436](notes/15-object-detection.md#L436)
 - Fair per-camera frame dropping vs our global max-in-flight. [15 §15 L436](notes/15-object-detection.md#L436)
+- Person on the quay from the main stream (crop) at acceptable CPU? Truck length from motion extent + tractor box? [16 §10 L398](notes/16-detection-quality.md#L398)
 - Should cameras optionally publish over UDP to test real picture corruption? [07 Open L310](notes/07-fault-injection.md#L310)
 
 ## Changelog
@@ -328,6 +340,7 @@ P0 = must work before anything else; each step has a "done when".
 | 2026-10-31 | 13 | DR use case; coercion, generated ids, orphan sweep, hidden stream errors, backups as secrets; key-cache question resolved |
 | 2026-11-06 | 14 | motion zones use case; 2.8 motion detection problems; coercion bullet refined (hot-apply bug); sub-stream detector, normalised zones, wire/runtime form, tuning tests |
 | 2026-11-07 | 15 | object events use case; 2.9 object detection problems (queue collapse, arrival-time stamps, thread pools, give-up-but-running, coupled lock); key-in-logs + plugin license; detector service design; CPU per frame |
+| 2026-11-10 | 16 | 2.9 measured quality, box convention, small/frame-filling objects, filter semantics (+ per-box filter idea); 4.6 labelled set + scorer, label audit, filter emulator e2e; open: quay person, truck length |
 
 
 ```

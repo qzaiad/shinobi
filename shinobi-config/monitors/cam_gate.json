@@ -97,7 +97,31 @@
     "detector_delete_motionless_videos": "0",
     "detector_emailClient_timeout": "",
     "detector_fcm_timeout": "",
-    "detector_filters": {},
+    "detector_filters": {
+      "no_traffic_light": {
+        "actions": {
+          "command": "",
+          "halt": 1,
+          "indifference": "",
+          "record": "",
+          "save": "",
+          "webhook": ""
+        },
+        "enabled": 1,
+        "filter_name": "no_traffic_light",
+        "id": "no_traffic_light",
+        "where": [
+          {
+            "closeBracket": 0,
+            "openBracket": 0,
+            "p1": "tag",
+            "p2": "===",
+            "p3": "traffic light",
+            "p4": "&&"
+          }
+        ]
+      }
+    },
     "detector_fps": "5",
     "detector_fps_object": "2",
     "detector_frame": "0",
@@ -308,7 +332,7 @@
     "tv_channel": "0",
     "tv_channel_group_title": "",
     "tv_channel_id": "cam_gate",
-    "use_detector_filters": "0",
+    "use_detector_filters": "1",
     "use_detector_filters_object": "1",
     "vcodec": "copy",
     "vf": "",

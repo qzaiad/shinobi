@@ -22,6 +22,14 @@
 #   check_motion_first  true = frames only flow for 5 s after a motion trigger, and motion
 #                     triggers then save no Events row of their own (only object events)
 #   plugins           pluginKeys names (detectors_selected), e.g. [YoloV9]
+#   filters           Shinobi event filters on the plugin's boxes (a camera's list replaces the
+#                     defaults'), docs/notes/16-detection-quality.md §5:
+#     - name: x                    [A-Za-z0-9_]+
+#       drop: on_match             drop boxes matching the ONE condition; if box 0 (best score)
+#                                  matches, the whole event is dropped, other boxes included
+#       drop: on_no_match          drop the event unless some box matches (join: and | or)
+#       where: [[field, op, value]]  field tag|confidence|x|y|width|height (640x360 pixels),
+#                                  op === !== indexOf !indexOf >= > < <=
 version: 1
 
 defaults:
@@ -43,7 +51,14 @@ defaults:
 
 cameras:
   cam-gate:
-    object: {}
+    object:
+      filters:
+        # A real traffic light (x 98, y 240, 8x13 px): YOLO is right, the port does not care.
+        # Box 0 in 4 of 146 events (2.7 %) next to a vehicle: that event is dropped whole, the
+        # next frame 0.5 s later usually carries the vehicle (filters take no lock).
+        - name: no_traffic_light
+          drop: on_match
+          where: [[tag, "===", traffic light]]
     regions:
       - name: gate_lane        # road in front of the gate, both lanes; OSD camera id cut out
         points: [[0, 0.76], [1, 0.76], [1, 0.92], [0.86, 0.92], [0.86, 1], [0, 1]]

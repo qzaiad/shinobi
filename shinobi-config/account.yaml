@@ -24,3 +24,8 @@ api_keys:
   - env: SHINOBI_EDIT_API_KEY
     ip: 0.0.0.0
     permissions: [get_monitors, edit_monitors]
+  # Trigger key (S16, S19): GET /<key>/motion/<ke>/<mid>?data={...} injects a synthetic motion or
+  # object event (libs/webServerPaths.js), e.g. to test event filters with chosen boxes.
+  - env: SHINOBI_TRIGGER_API_KEY
+    ip: 0.0.0.0
+    permissions: [control_monitors]

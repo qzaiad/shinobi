@@ -20,6 +20,16 @@ With an `object:` block, additionally (object detector plugin, frames as MJPEG o
     input_map_choices.detector_object, *_scale_*_object   from the sub stream, at its size
     detector_fps_object                                   JPEGs per second
     detector_use_motion                                   1 = only for 5 s after a motion trigger
+    use_detector_filters, detector_filters                event filters (object.filters), below
+
+Event filters (docs/notes/16-detection-quality.md §5, measured on the live system): Shinobi
+evaluates every condition on each box separately; a box at position 1..n that matches a
+condition of a drop-on-match filter is deleted, while box 0 (the plugin's best score) matching
+the whole expression drops the EVENT, other boxes included. Consequences enforced here:
+  drop: on_match     exactly ONE condition (two conditions are no per-box AND: each deletes the
+                     boxes it matches on its own, e.g. "person && confidence < 0.6" deleted a
+                     truck at 0.5)
+  drop: on_no_match  any conditions; "keep the event only if some box matches", nothing deleted
 
 Region points: `points` = fractions of the frame (0..1, survive a change of detector size) or
 `points_px` = pixels of the detector frame (what Shinobi's region editor shows). Exactly one per
@@ -46,7 +56,7 @@ RENDERED_KEYS = frozenset(
         "detector_scale_y", "input_maps", "input_map_choices", "cords",
         "detector_use_detect_object", "detector_send_frames_object", "detector_scale_x_object",
         "detector_scale_y_object", "detector_fps_object", "detector_use_motion",
-        "detectors_selected",
+        "detectors_selected", "use_detector_filters", "detector_filters",
     }
 )  # fmt: skip
 
@@ -87,6 +97,59 @@ class Region(RegionSettings):
         return self
 
 
+FilterField = Literal["tag", "confidence", "x", "y", "width", "height"]
+FilterOp = Literal["===", "!==", "indexOf", "!indexOf", ">=", ">", "<", "<="]
+_NUMERIC_OPS = {">=", ">", "<", "<="}
+
+
+class Condition(BaseModel):
+    """One `where` row: [field, op, value], a property of ONE box (matrix)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    field: FilterField
+    op: FilterOp
+    value: str | float
+
+    @model_validator(mode="before")
+    @classmethod
+    def _from_list(cls, raw: Any) -> Any:
+        if isinstance(raw, list | tuple):
+            if len(raw) != 3:
+                raise ValueError(f"condition {raw}: write [field, op, value]")
+            return {"field": raw[0], "op": raw[1], "value": raw[2]}
+        return raw
+
+    @model_validator(mode="after")
+    def _types(self) -> Self:
+        numeric = self.field != "tag"
+        if numeric and isinstance(self.value, str):
+            raise ValueError(f"{self.field}: value must be a number")
+        if not numeric and self.op in _NUMERIC_OPS:
+            raise ValueError(f"tag {self.op}: comparisons need a numeric field")
+        if numeric and self.op in {"indexOf", "!indexOf"}:
+            raise ValueError(f"{self.field} {self.op}: indexOf is for tags (it would crash)")
+        return self
+
+
+class EventFilter(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: str = Field(pattern=r"^[A-Za-z0-9_]+$")
+    drop: Literal["on_match", "on_no_match"]  # Shinobi actions.halt "1" / "2"
+    where: tuple[Condition, ...] = Field(min_length=1)
+    join: Literal["and", "or"] = "and"
+
+    @model_validator(mode="after")
+    def _one_condition_to_drop(self) -> Self:
+        if self.drop == "on_match" and len(self.where) > 1:
+            raise ValueError(
+                f"filter {self.name}: drop: on_match takes exactly one condition; Shinobi "
+                "deletes boxes per condition, not per AND of conditions (notes/16 §5)"
+            )
+        return self
+
+
 class ObjectSettings(BaseModel):
     """Object detection (plugin) for one camera; None = take `defaults.object`."""
 
@@ -96,6 +159,19 @@ class ObjectSettings(BaseModel):
     fps: float | None = Field(default=None, gt=0, le=30)  # JPEGs per second to the plugin
     check_motion_first: bool | None = None  # only send while motion triggered (5 s windows)
     plugins: tuple[str, ...] | None = Field(default=None, min_length=1)  # pluginKeys names
+    filters: tuple[EventFilter, ...] | None = None  # replaces defaults.object.filters
+
+    @model_validator(mode="after")
+    def _unique_filters(self) -> Self:
+        _check_unique_filters(self.filters or ())
+        return self
+
+
+def _check_unique_filters(filters: tuple[EventFilter, ...]) -> None:
+    names = [f.name for f in filters]
+    dup = sorted({n for n in names if names.count(n) > 1})
+    if dup:
+        raise ValueError(f"duplicate filter names {dup}")
 
 
 class ObjectDefaults(BaseModel):
@@ -105,6 +181,12 @@ class ObjectDefaults(BaseModel):
     fps: float = Field(default=2, gt=0, le=30)
     check_motion_first: bool = True
     plugins: tuple[str, ...] = Field(default=("YoloV9",), min_length=1)
+    filters: tuple[EventFilter, ...] = ()
+
+    @model_validator(mode="after")
+    def _unique_filters(self) -> Self:
+        _check_unique_filters(self.filters)
+        return self
 
 
 class CameraDetection(BaseModel):
@@ -248,8 +330,37 @@ def details_for(
             "detector_fps_object": _number(obj.fps),
             "detector_use_motion": 1 if obj.check_motion_first else 0,
             "detectors_selected": list(obj.plugins),
+            "use_detector_filters": 1 if obj.filters else 0,
+            "detector_filters": shinobi_filters(obj.filters),
         }
     return details
+
+
+def shinobi_filters(filters: tuple[EventFilter, ...]) -> dict[str, Any]:
+    """Pure: event filters in the shape the dashboard's filter editor stores
+    (web/assets/js/bs5.eventFilters.js), all flags and values as strings."""
+    return {
+        f.name: {
+            "id": f.name,
+            "enabled": "1",
+            "filter_name": f.name,
+            "where": [
+                {
+                    "p1": c.field,
+                    "p2": c.op,
+                    "p3": c.value if isinstance(c.value, str) else str(_number(c.value)),
+                    "p4": "&&" if f.join == "and" else "||",
+                    "openBracket": "0",
+                    "closeBracket": "0",
+                }
+                for c in f.where
+            ],
+            # "" = keep the monitor's own choice (save, webhook, ...); halt 1 = drop on match
+            "actions": {"halt": "1" if f.drop == "on_match" else "2", "save": "",
+                        "indifference": "", "webhook": "", "command": "", "record": ""},
+        }
+        for f in filters
+    }  # fmt: skip
 
 
 def object_settings(
@@ -258,7 +369,8 @@ def object_settings(
     """Camera `object:` with the defaults filled in; None = no object detection."""
     if entry is None:
         return None
-    given = {k: v for k, v in entry.model_dump().items() if v is not None}
+    # attributes, not model_dump(): nested models (filters) must stay models
+    given = {k: v for k in type(entry).model_fields if (v := getattr(entry, k)) is not None}
     return defaults.model_copy(update=given)
 
 

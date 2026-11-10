@@ -164,7 +164,7 @@ Everything runs from one `docker compose` stack. Services talk only via MQTT top
 ### Session 16 — Detection quality
 - **Learn:** COCO classes vs port reality (boat/truck/person exist; container, crane, reach stacker don't). Event filters, confidence thresholds, "check for motion first".
 - **Do:** Event filters per monitor; a small labelled set of 20 frames per camera and a script measuring hits/misses against plugin output.
-- **Done when:** Precision/recall rough numbers per camera recorded in `docs/notes/detection-quality.md`.
+- **Done when:** Precision/recall rough numbers per camera recorded in `docs/notes/16-detection-quality.md`.
 - **Commit:** `test(detect): measure plugin detection quality on port frames`
 
 ### Session 17 — Events out: webhooks

@@ -61,6 +61,9 @@ ROUTES: dict[str, bytes] = {
     "/API_KEY/events/GROUP_KEY/cam_quay": fixture("events_cam_quay"),
     "/API_KEY/events/GROUP_KEY/cam_gate": fixture("events_cam_gate_object"),
     "/API_KEY/plugins/GROUP_KEY/connected": fixture("plugins_connected"),
+    "/API_KEY/motion/GROUP_KEY/cam_yard": fixture("trigger_accepted"),
+    "/API_KEY/motion/GROUP_KEY/cam_gate": fixture("trigger_motion_lock"),
+    "/API_KEY/motion/GROUP_KEY/no_such_monitor": fixture("trigger_unknown_monitor"),
 }
 
 
@@ -405,3 +408,34 @@ def test_no_plugin_connected_is_empty() -> None:
         return httpx.Response(200, json={"ok": True, "plugins": {}})
 
     assert client_with(handler).connected_plugins() == {}
+
+
+# -- trigger (Session 16) ---------------------------------------------------------------------
+
+
+TRUCK = {"plug": "test", "name": "t", "reason": "object", "imgWidth": 640, "imgHeight": 360,
+         "matrices": [{"tag": "truck", "confidence": 0.8, "x": 1, "y": 1, "width": 50, "height": 40}]}  # fmt: skip  # noqa: E501
+
+
+def test_trigger_sends_details_as_json_query(client: ShinobiClient, fake: FakeShinobi) -> None:
+    result = client.trigger("cam_yard", TRUCK)
+    assert result.triggered and result.msg == "Trigger Successful"
+    url = fake.requests[-1].url
+    assert url.path == "/API_KEY/motion/GROUP_KEY/cam_yard"
+    assert json.loads(parse_qs(url.query.decode())["data"][0]) == TRUCK
+
+
+def test_trigger_dropped_inside_shinobi_is_a_result_not_an_error(client: ShinobiClient) -> None:
+    result = client.trigger("cam_gate", TRUCK)
+    assert not result.triggered
+    assert result.reason == "Ignored : Motion Lock"
+
+
+def test_trigger_refused_before_the_event_raises(client: ShinobiClient) -> None:
+    with pytest.raises(ShinobiError, match="does not exist"):
+        client.trigger("no_such_monitor", TRUCK)
+
+
+def test_trigger_without_permission_raises_auth_error(client: ShinobiClient) -> None:
+    with pytest.raises(ShinobiAuthError):
+        client_with(FakeShinobi({}), api_key="API_KEY").trigger("cam_yard", TRUCK)

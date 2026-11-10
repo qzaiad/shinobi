@@ -1,0 +1,830 @@
+# Ground truth for docs/notes/16-detection-quality.md. Edit with the labeller:
+#   uv run python -m tools.detect_eval label        (http://127.0.0.1:8765)
+# Boxes are pixels of the 640x360 frame. Guidelines:
+#   truck   whole vehicle incl. trailer and load; a container on a chassis is part of the truck
+#   container  only containers not on a vehicle; one box per stack block, not per box
+#   crane   visible structure of STS/RTG/mobile cranes; port_vehicle = reach stacker, straddle
+#           carrier, forklift, terminal tractor
+#   ignore  objects nobody would expect a detector to report: < ~12 px high, mostly hidden,
+#           cut by the frame edge, or behind the OSD
+version: 1
+width: 640
+height: 360
+fps: 2.0
+classes:
+  truck: truck
+  car: car
+  person: person
+  boat: boat
+  bus: bus
+  container: null
+  crane: null
+  port_vehicle: null
+  traffic_light: traffic light
+cameras:
+  cam-gate:
+    clip: gate_santos_port.mp4
+    clip_sha256: b2acb4a51195c7c35cd614e6d47b84e71310874ec39ad6001c9d508f031172d7
+    frames:
+    - id: cam-gate-00
+      index: 2
+      done: true
+      boxes:
+      - {cls: truck, xywh: [169, 279, 180, 48]}
+      - {cls: truck, xywh: [369, 286, 134, 49]}
+      - {cls: crane, xywh: [136, 35, 76, 274]}
+      - {cls: crane, xywh: [246, 43, 76, 211]}
+      - {cls: crane, xywh: [464, 63, 111, 186]}
+      - {cls: traffic_light, xywh: [98, 242, 8, 11]}
+    - id: cam-gate-01
+      index: 8
+      done: true
+      boxes:
+      - {cls: truck, xywh: [152, 280, 199, 43]}
+      - {cls: truck, xywh: [366, 282, 137, 49]}
+      - {cls: car, xywh: [276, 303, 63, 26]}
+      - {cls: crane, xywh: [137, 34, 74, 277]}
+      - {cls: crane, xywh: [252, 41, 67, 215]}
+      - {cls: crane, xywh: [455, 61, 117, 194]}
+      - {cls: traffic_light, xywh: [98, 241, 9, 12]}
+    - id: cam-gate-02
+      index: 13
+      done: true
+      boxes:
+      - {cls: car, xywh: [93, 302, 51, 22]}
+      - {cls: car, xywh: [209, 305, 52, 23]}
+      - {cls: traffic_light, xywh: [366, 282, 264, 50]}
+      - {cls: truck, xywh: [151, 277, 196, 47]}
+      - {cls: traffic_light, xywh: [97, 241, 10, 13]}
+      - {cls: crane, xywh: [140, 35, 69, 268]}
+      - {cls: crane, xywh: [250, 43, 64, 219]}
+      - {cls: crane, xywh: [466, 60, 111, 190]}
+      - {cls: truck, xywh: [367, 282, 136, 52]}
+    - id: cam-gate-03
+      index: 19
+      done: true
+      boxes:
+      - {cls: crane, xywh: [138, 35, 72, 276]}
+      - {cls: crane, xywh: [246, 40, 79, 218]}
+      - {cls: crane, xywh: [462, 62, 114, 186]}
+      - {cls: traffic_light, xywh: [98, 241, 9, 12]}
+      - {cls: truck, xywh: [365, 286, 138, 50]}
+      - {cls: truck, xywh: [152, 277, 197, 47]}
+    - id: cam-gate-04
+      index: 24
+      done: true
+      boxes:
+      - {cls: truck, xywh: [146, 281, 206, 45]}
+      - {cls: truck, xywh: [367, 286, 136, 49]}
+      - {cls: crane, xywh: [137, 34, 76, 278]}
+      - {cls: crane, xywh: [250, 41, 69, 217]}
+      - {cls: crane, xywh: [464, 61, 113, 190]}
+      - {cls: traffic_light, xywh: [97, 242, 12, 12]}
+    - id: cam-gate-05
+      index: 30
+      done: true
+      boxes:
+      - {cls: traffic_light, xywh: [97, 241, 10, 12]}
+      - {cls: crane, xywh: [139, 33, 72, 249]}
+      - {cls: crane, xywh: [251, 42, 68, 214]}
+      - {cls: crane, xywh: [466, 62, 106, 190]}
+      - {cls: truck, xywh: [367, 282, 137, 54]}
+      - {cls: truck, xywh: [90, 277, 169, 47]}
+      - {cls: car, xywh: [190, 299, 63, 31]}
+    - id: cam-gate-06
+      index: 35
+      done: true
+      boxes:
+      - {cls: traffic_light, xywh: [97, 243, 10, 10]}
+      - {cls: crane, xywh: [137, 35, 72, 281]}
+      - {cls: crane, xywh: [250, 43, 72, 214]}
+      - {cls: crane, xywh: [467, 55, 107, 202]}
+      - {cls: truck, xywh: [369, 283, 132, 52]}
+      - {cls: car, xywh: [49, 305, 110, 51]}
+      - {cls: truck, xywh: [24, 279, 155, 37]}
+    - id: cam-gate-07
+      index: 41
+      done: true
+      boxes:
+      - {cls: traffic_light, xywh: [98, 241, 8, 12]}
+      - {cls: crane, xywh: [135, 35, 76, 280]}
+      - {cls: crane, xywh: [248, 44, 74, 212]}
+      - {cls: crane, xywh: [465, 62, 107, 190]}
+      - {cls: truck, xywh: [368, 282, 142, 51]}
+      - {cls: car, xywh: [172, 299, 133, 61]}
+      - {cls: car, xywh: [0, 306, 49, 48]}
+    - id: cam-gate-08
+      index: 46
+      done: true
+      boxes:
+      - {cls: traffic_light, xywh: [97, 242, 10, 12]}
+      - {cls: crane, xywh: [136, 35, 76, 276]}
+      - {cls: crane, xywh: [249, 45, 73, 211]}
+      - {cls: crane, xywh: [467, 61, 108, 193]}
+      - {cls: truck, xywh: [367, 281, 136, 54]}
+      - {cls: car, xywh: [148, 306, 119, 54]}
+    - id: cam-gate-09
+      index: 52
+      done: true
+      boxes:
+      - {cls: traffic_light, xywh: [96, 242, 11, 12]}
+      - {cls: crane, xywh: [138, 36, 71, 275]}
+      - {cls: crane, xywh: [250, 46, 68, 209]}
+      - {cls: crane, xywh: [466, 63, 108, 194]}
+      - {cls: truck, xywh: [367, 282, 132, 50]}
+    - id: cam-gate-10
+      index: 57
+      done: true
+      boxes:
+      - {cls: traffic_light, xywh: [98, 241, 7, 12]}
+      - {cls: crane, xywh: [139, 34, 72, 278]}
+      - {cls: crane, xywh: [250, 45, 71, 211]}
+      - {cls: crane, xywh: [467, 60, 110, 199]}
+      - {cls: truck, xywh: [368, 282, 137, 51]}
+    - id: cam-gate-11
+      index: 63
+      done: true
+      boxes:
+      - {cls: traffic_light, xywh: [97, 240, 11, 14]}
+      - {cls: crane, xywh: [136, 36, 77, 256]}
+      - {cls: crane, xywh: [248, 44, 74, 211]}
+      - {cls: crane, xywh: [467, 62, 109, 194]}
+      - {cls: truck, xywh: [366, 283, 131, 49]}
+      - {cls: car, xywh: [115, 290, 142, 70]}
+    - id: cam-gate-12
+      index: 68
+      done: true
+      boxes:
+      - {cls: traffic_light, xywh: [97, 241, 12, 13]}
+      - {cls: crane, xywh: [139, 36, 74, 275]}
+      - {cls: crane, xywh: [248, 44, 70, 213]}
+      - {cls: crane, xywh: [466, 61, 109, 197]}
+      - {cls: truck, xywh: [462, 285, 108, 46], ignore: true}
+      - {cls: car, xywh: [298, 277, 257, 83]}
+      - {cls: car, xywh: [86, 301, 30, 16]}
+    - id: cam-gate-13
+      index: 74
+      done: true
+      boxes:
+      - {cls: traffic_light, xywh: [97, 242, 10, 11]}
+      - {cls: crane, xywh: [142, 35, 69, 277]}
+      - {cls: crane, xywh: [249, 43, 74, 214]}
+      - {cls: crane, xywh: [469, 61, 105, 191]}
+      - {cls: truck, xywh: [0, 244, 113, 112]}
+      - {cls: truck, xywh: [365, 289, 143, 43]}
+      - {cls: truck, xywh: [277, 285, 83, 46]}
+    - id: cam-gate-14
+      index: 79
+      done: true
+      boxes:
+      - {cls: traffic_light, xywh: [98, 242, 10, 15]}
+      - {cls: crane, xywh: [138, 33, 76, 279]}
+      - {cls: crane, xywh: [248, 42, 77, 215]}
+      - {cls: crane, xywh: [466, 63, 107, 161]}
+      - {cls: truck, xywh: [174, 274, 163, 49]}
+      - {cls: truck, xywh: [372, 228, 268, 132]}
+    - id: cam-gate-15
+      index: 85
+      done: true
+      boxes:
+      - {cls: traffic_light, xywh: [97, 242, 11, 12]}
+      - {cls: crane, xywh: [138, 36, 75, 251]}
+      - {cls: crane, xywh: [250, 44, 73, 213]}
+      - {cls: crane, xywh: [467, 62, 103, 191]}
+      - {cls: truck, xywh: [124, 277, 102, 43]}
+      - {cls: truck, xywh: [364, 285, 136, 51]}
+    - id: cam-gate-16
+      index: 90
+      done: true
+      boxes:
+      - {cls: traffic_light, xywh: [96, 241, 11, 12]}
+      - {cls: crane, xywh: [135, 34, 76, 242]}
+      - {cls: crane, xywh: [248, 44, 74, 213]}
+      - {cls: crane, xywh: [466, 61, 109, 192]}
+      - {cls: truck, xywh: [110, 275, 61, 44]}
+      - {cls: truck, xywh: [367, 283, 136, 50]}
+    - id: cam-gate-17
+      index: 96
+      done: true
+      boxes:
+      - {cls: traffic_light, xywh: [98, 242, 10, 12]}
+      - {cls: crane, xywh: [144, 34, 65, 279]}
+      - {cls: crane, xywh: [247, 45, 76, 211]}
+      - {cls: crane, xywh: [464, 62, 111, 186]}
+      - {cls: truck, xywh: [365, 284, 146, 48]}
+      - {cls: truck, xywh: [101, 278, 45, 37]}
+    - id: cam-gate-18
+      index: 101
+      done: true
+      boxes:
+      - {cls: traffic_light, xywh: [97, 241, 10, 13]}
+      - {cls: crane, xywh: [139, 36, 68, 279]}
+      - {cls: crane, xywh: [249, 45, 74, 212]}
+      - {cls: crane, xywh: [466, 62, 107, 184]}
+      - {cls: truck, xywh: [366, 285, 137, 47]}
+      - {cls: container, xywh: [105, 279, 29, 24]}
+    - id: cam-gate-19
+      index: 107
+      done: true
+      boxes:
+      - {cls: traffic_light, xywh: [98, 241, 9, 12]}
+      - {cls: crane, xywh: [136, 36, 73, 277]}
+      - {cls: crane, xywh: [248, 45, 74, 211]}
+      - {cls: crane, xywh: [466, 62, 110, 183]}
+      - {cls: truck, xywh: [364, 285, 139, 50]}
+      - {cls: container, xywh: [95, 281, 28, 24]}
+  cam-quay:
+    clip: quay_sts_truck_loading.mp4
+    clip_sha256: a0664a96cfda60595b64421ff1ec0ad9d290ddd21ec0fdd2797c32bcf5cea481
+    frames:
+    - id: cam-quay-00
+      index: 0
+      done: true
+      boxes:
+      - {cls: truck, xywh: [293, 179, 142, 169]}
+      - {cls: person, xywh: [143, 264, 8, 17]}
+    - id: cam-quay-01
+      index: 1
+      done: true
+      boxes:
+      - {cls: truck, xywh: [288, 177, 147, 169]}
+      - {cls: person, xywh: [142, 264, 8, 17]}
+    - id: cam-quay-02
+      index: 2
+      done: true
+      boxes:
+      - {cls: truck, xywh: [289, 174, 143, 167]}
+      - {cls: person, xywh: [142, 264, 8, 17]}
+    - id: cam-quay-03
+      index: 3
+      done: true
+      boxes:
+      - {cls: truck, xywh: [288, 175, 147, 166]}
+      - {cls: person, xywh: [140, 264, 8, 17]}
+    - id: cam-quay-04
+      index: 4
+      done: true
+      boxes:
+      - {cls: truck, xywh: [288, 174, 143, 167]}
+      - {cls: person, xywh: [140, 264, 8, 17]}
+    - id: cam-quay-05
+      index: 5
+      done: true
+      boxes:
+      - {cls: truck, xywh: [285, 174, 144, 166]}
+      - {cls: person, xywh: [135, 264, 8, 17]}
+    - id: cam-quay-06
+      index: 6
+      done: true
+      boxes:
+      - {cls: truck, xywh: [282, 177, 146, 164]}
+      - {cls: person, xywh: [133, 264, 8, 17]}
+    - id: cam-quay-07
+      index: 7
+      done: true
+      boxes:
+      - {cls: truck, xywh: [275, 173, 150, 168]}
+      - {cls: container, xywh: [267, 0, 114, 81]}
+      - {cls: person, xywh: [128, 264, 8, 17]}
+    - id: cam-quay-08
+      index: 8
+      done: true
+      boxes:
+      - {cls: truck, xywh: [274, 175, 141, 165]}
+      - {cls: container, xywh: [268, 0, 125, 96]}
+      - {cls: person, xywh: [124, 264, 8, 17]}
+    - id: cam-quay-09
+      index: 9
+      done: true
+      boxes:
+      - {cls: truck, xywh: [269, 176, 143, 164]}
+      - {cls: container, xywh: [270, 0, 130, 108]}
+      - {cls: person, xywh: [119, 263, 8, 17]}
+    - id: cam-quay-10
+      index: 10
+      done: true
+      boxes:
+      - {cls: truck, xywh: [263, 173, 143, 166]}
+      - {cls: container, xywh: [269, 0, 128, 121]}
+      - {cls: person, xywh: [114, 263, 8, 17]}
+    - id: cam-quay-11
+      index: 11
+      done: true
+      boxes:
+      - {cls: truck, xywh: [258, 174, 146, 162]}
+      - {cls: container, xywh: [267, 0, 133, 132]}
+      - {cls: person, xywh: [110, 263, 8, 17]}
+    - id: cam-quay-12
+      index: 12
+      done: true
+      boxes:
+      - {cls: truck, xywh: [254, 175, 150, 164]}
+      - {cls: container, xywh: [263, 0, 137, 142]}
+      - {cls: person, xywh: [105, 263, 8, 17]}
+    - id: cam-quay-13
+      index: 13
+      done: true
+      boxes:
+      - {cls: truck, xywh: [253, 173, 146, 166]}
+      - {cls: container, xywh: [261, 2, 135, 154]}
+      - {cls: person, xywh: [103, 263, 8, 17]}
+    - id: cam-quay-14
+      index: 14
+      done: true
+      boxes:
+      - {cls: truck, xywh: [250, 173, 143, 165]}
+      - {cls: container, xywh: [254, 13, 138, 152]}
+      - {cls: person, xywh: [101, 263, 8, 17]}
+    - id: cam-quay-15
+      index: 15
+      done: true
+      boxes:
+      - {cls: truck, xywh: [245, 175, 147, 162]}
+      - {cls: container, xywh: [249, 33, 136, 139]}
+      - {cls: person, xywh: [95, 263, 8, 17]}
+    - id: cam-quay-16
+      index: 16
+      done: true
+      boxes:
+      - {cls: truck, xywh: [242, 172, 146, 165]}
+      - {cls: container, xywh: [246, 46, 133, 136]}
+      - {cls: person, xywh: [95, 263, 8, 17]}
+    - id: cam-quay-17
+      index: 17
+      done: true
+      boxes:
+      - {cls: truck, xywh: [246, 176, 139, 163]}
+      - {cls: container, xywh: [240, 61, 136, 131]}
+      - {cls: person, xywh: [94, 263, 8, 17]}
+    - id: cam-quay-18
+      index: 18
+      done: true
+      boxes:
+      - {cls: truck, xywh: [234, 191, 162, 169]}
+      - {cls: container, xywh: [227, 77, 150, 141]}
+      - {cls: person, xywh: [63, 289, 9, 19]}
+  cam-yard:
+    clip: yard_malta_freeport.mp4
+    clip_sha256: 133282cb2304ef66a28a39de447594a9b0340097ed0642739c4d1da206998297
+    frames:
+    - id: cam-yard-00
+      index: 7
+      done: true
+      boxes:
+      - {cls: container, xywh: [0, 175, 105, 33]}
+      - {cls: container, xywh: [0, 208, 106, 34]}
+      - {cls: container, xywh: [0, 242, 86, 40]}
+      - {cls: container, xywh: [107, 179, 137, 32]}
+      - {cls: container, xywh: [109, 210, 133, 32]}
+      - {cls: container, xywh: [90, 243, 145, 39]}
+      - {cls: container, xywh: [337, 317, 128, 43]}
+      - {cls: container, xywh: [379, 239, 138, 40]}
+      - {cls: container, xywh: [385, 279, 135, 29]}
+      - {cls: crane, xywh: [459, 314, 70, 33]}
+      - {cls: crane, xywh: [255, 65, 124, 272]}
+      - {cls: crane, xywh: [559, 72, 47, 105]}
+      - {cls: crane, xywh: [132, 60, 47, 108]}
+      - {cls: crane, xywh: [72, 56, 48, 106]}
+    - id: cam-yard-01
+      index: 21
+      done: true
+      boxes:
+      - {cls: crane, xywh: [246, 60, 127, 258]}
+      - {cls: crane, xywh: [134, 58, 46, 107]}
+      - {cls: crane, xywh: [76, 58, 47, 108]}
+      - {cls: crane, xywh: [554, 71, 51, 106]}
+      - {cls: container, xywh: [113, 179, 128, 31]}
+      - {cls: container, xywh: [111, 211, 130, 32]}
+      - {cls: container, xywh: [91, 244, 147, 39]}
+      - {cls: container, xywh: [0, 240, 85, 42]}
+      - {cls: container, xywh: [0, 175, 105, 32]}
+      - {cls: container, xywh: [0, 210, 106, 31]}
+      - {cls: container, xywh: [335, 318, 127, 42]}
+      - {cls: container, xywh: [380, 244, 136, 33]}
+      - {cls: container, xywh: [385, 274, 133, 35]}
+      - {cls: container, xywh: [462, 307, 68, 40]}
+    - id: cam-yard-02
+      index: 35
+      done: true
+      boxes:
+      - {cls: crane, xywh: [254, 61, 147, 253]}
+      - {cls: crane, xywh: [135, 58, 42, 109]}
+      - {cls: crane, xywh: [75, 57, 47, 108]}
+      - {cls: crane, xywh: [563, 69, 42, 109]}
+      - {cls: container, xywh: [109, 178, 138, 32]}
+      - {cls: container, xywh: [110, 207, 134, 35]}
+      - {cls: container, xywh: [93, 244, 145, 39]}
+      - {cls: container, xywh: [0, 241, 88, 40]}
+      - {cls: container, xywh: [0, 210, 103, 29]}
+      - {cls: container, xywh: [1, 174, 104, 36]}
+      - {cls: container, xywh: [385, 241, 128, 36]}
+      - {cls: container, xywh: [387, 277, 134, 33]}
+      - {cls: container, xywh: [459, 309, 72, 39]}
+    - id: cam-yard-03
+      index: 49
+      done: true
+      boxes:
+      - {cls: crane, xywh: [252, 62, 158, 255]}
+      - {cls: crane, xywh: [135, 63, 46, 106]}
+      - {cls: crane, xywh: [75, 56, 43, 108]}
+      - {cls: crane, xywh: [563, 71, 45, 107]}
+      - {cls: container, xywh: [109, 179, 138, 29]}
+      - {cls: container, xywh: [111, 208, 136, 35]}
+      - {cls: container, xywh: [91, 246, 155, 37]}
+      - {cls: container, xywh: [0, 176, 103, 34]}
+      - {cls: container, xywh: [1, 211, 105, 29]}
+      - {cls: container, xywh: [0, 243, 86, 38]}
+      - {cls: container, xywh: [459, 308, 64, 41]}
+      - {cls: container, xywh: [385, 277, 129, 34]}
+      - {cls: container, xywh: [381, 242, 135, 30]}
+    - id: cam-yard-04
+      index: 63
+      done: true
+      boxes:
+      - {cls: crane, xywh: [256, 61, 117, 258]}
+      - {cls: crane, xywh: [135, 57, 46, 110]}
+      - {cls: crane, xywh: [73, 57, 49, 110]}
+      - {cls: crane, xywh: [560, 71, 45, 108]}
+      - {cls: container, xywh: [110, 178, 135, 32]}
+      - {cls: container, xywh: [113, 213, 131, 28]}
+      - {cls: container, xywh: [91, 243, 149, 39]}
+      - {cls: container, xywh: [0, 175, 102, 32]}
+      - {cls: container, xywh: [0, 210, 103, 27]}
+      - {cls: container, xywh: [0, 241, 84, 39]}
+      - {cls: container, xywh: [458, 308, 66, 37]}
+      - {cls: container, xywh: [390, 279, 129, 23]}
+      - {cls: container, xywh: [380, 239, 134, 39]}
+      - {cls: container, xywh: [377, 212, 104, 25]}
+    - id: cam-yard-05
+      index: 78
+      done: true
+      boxes:
+      - {cls: crane, xywh: [136, 54, 41, 115]}
+      - {cls: crane, xywh: [75, 56, 45, 116]}
+      - {cls: crane, xywh: [563, 70, 43, 104]}
+      - {cls: crane, xywh: [257, 60, 147, 276]}
+      - {cls: container, xywh: [111, 181, 131, 27]}
+      - {cls: container, xywh: [109, 211, 131, 29]}
+      - {cls: container, xywh: [94, 242, 140, 38]}
+      - {cls: container, xywh: [0, 243, 87, 37]}
+      - {cls: container, xywh: [0, 211, 102, 24]}
+      - {cls: container, xywh: [0, 179, 105, 28]}
+      - {cls: container, xywh: [461, 308, 64, 36]}
+      - {cls: container, xywh: [389, 278, 129, 28]}
+      - {cls: container, xywh: [387, 241, 126, 31]}
+    - id: cam-yard-06
+      index: 92
+      done: true
+      boxes:
+      - {cls: crane, xywh: [250, 69, 152, 262]}
+      - {cls: crane, xywh: [139, 54, 42, 111]}
+      - {cls: crane, xywh: [71, 57, 52, 108]}
+      - {cls: crane, xywh: [560, 70, 47, 101]}
+      - {cls: container, xywh: [115, 176, 128, 34]}
+      - {cls: container, xywh: [110, 208, 132, 33]}
+      - {cls: container, xywh: [95, 242, 147, 36]}
+      - {cls: container, xywh: [0, 239, 85, 42]}
+      - {cls: container, xywh: [0, 210, 103, 29]}
+      - {cls: container, xywh: [0, 176, 103, 32]}
+      - {cls: container, xywh: [463, 308, 63, 40]}
+      - {cls: container, xywh: [388, 277, 130, 30]}
+      - {cls: container, xywh: [394, 241, 120, 32]}
+      - {cls: container, xywh: [343, 319, 113, 41]}
+    - id: cam-yard-07
+      index: 106
+      done: true
+      boxes:
+      - {cls: crane, xywh: [133, 60, 48, 107]}
+      - {cls: crane, xywh: [73, 56, 50, 109]}
+      - {cls: crane, xywh: [244, 73, 161, 258]}
+      - {cls: crane, xywh: [558, 73, 46, 102]}
+      - {cls: container, xywh: [113, 179, 130, 31]}
+      - {cls: container, xywh: [112, 214, 128, 26]}
+      - {cls: container, xywh: [93, 243, 143, 40]}
+      - {cls: container, xywh: [0, 177, 105, 30]}
+      - {cls: container, xywh: [1, 209, 104, 29]}
+      - {cls: container, xywh: [0, 239, 85, 42]}
+      - {cls: container, xywh: [388, 241, 125, 33]}
+      - {cls: container, xywh: [383, 278, 134, 29]}
+      - {cls: container, xywh: [464, 311, 65, 35]}
+      - {cls: container, xywh: [342, 316, 116, 44]}
+    - id: cam-yard-08
+      index: 120
+      done: true
+      boxes:
+      - {cls: crane, xywh: [254, 71, 152, 258]}
+      - {cls: crane, xywh: [137, 58, 49, 115]}
+      - {cls: crane, xywh: [78, 55, 42, 112]}
+      - {cls: crane, xywh: [565, 67, 39, 112]}
+      - {cls: container, xywh: [111, 176, 134, 33]}
+      - {cls: container, xywh: [0, 175, 106, 31]}
+      - {cls: container, xywh: [0, 210, 105, 29]}
+      - {cls: container, xywh: [110, 212, 132, 27]}
+      - {cls: container, xywh: [93, 248, 148, 30]}
+      - {cls: container, xywh: [465, 310, 62, 36]}
+      - {cls: container, xywh: [338, 315, 118, 45]}
+      - {cls: container, xywh: [387, 276, 133, 31]}
+      - {cls: container, xywh: [385, 243, 130, 27]}
+    - id: cam-yard-09
+      index: 134
+      done: true
+      boxes:
+      - {cls: crane, xywh: [259, 71, 144, 267]}
+      - {cls: crane, xywh: [131, 57, 45, 109]}
+      - {cls: crane, xywh: [75, 56, 48, 109]}
+      - {cls: crane, xywh: [564, 70, 39, 105]}
+      - {cls: container, xywh: [111, 178, 134, 30]}
+      - {cls: container, xywh: [112, 211, 130, 30]}
+      - {cls: container, xywh: [93, 242, 146, 40]}
+      - {cls: container, xywh: [0, 174, 105, 33]}
+      - {cls: container, xywh: [0, 209, 105, 31]}
+      - {cls: container, xywh: [0, 242, 85, 38]}
+      - {cls: container, xywh: [343, 319, 117, 41]}
+      - {cls: container, xywh: [459, 308, 63, 40]}
+      - {cls: container, xywh: [385, 277, 129, 32]}
+      - {cls: container, xywh: [380, 240, 133, 38]}
+    - id: cam-yard-10
+      index: 149
+      done: true
+      boxes:
+      - {cls: crane, xywh: [246, 68, 160, 262]}
+      - {cls: crane, xywh: [131, 58, 48, 107]}
+      - {cls: crane, xywh: [72, 57, 51, 109]}
+      - {cls: crane, xywh: [560, 71, 45, 106]}
+      - {cls: container, xywh: [110, 182, 130, 26]}
+      - {cls: container, xywh: [0, 180, 103, 29]}
+      - {cls: container, xywh: [0, 208, 106, 32]}
+      - {cls: container, xywh: [111, 210, 128, 29]}
+      - {cls: container, xywh: [94, 244, 142, 38]}
+      - {cls: container, xywh: [0, 244, 85, 38]}
+      - {cls: container, xywh: [344, 316, 116, 43]}
+      - {cls: container, xywh: [459, 308, 62, 52]}
+      - {cls: container, xywh: [387, 274, 134, 34]}
+      - {cls: container, xywh: [382, 243, 135, 31]}
+    - id: cam-yard-11
+      index: 163
+      done: true
+      boxes:
+      - {cls: crane, xywh: [247, 69, 161, 266]}
+      - {cls: crane, xywh: [135, 56, 46, 111]}
+      - {cls: crane, xywh: [73, 57, 50, 109]}
+      - {cls: crane, xywh: [550, 70, 55, 108]}
+      - {cls: container, xywh: [109, 178, 130, 30]}
+      - {cls: container, xywh: [0, 177, 102, 31]}
+      - {cls: container, xywh: [0, 208, 106, 30]}
+      - {cls: container, xywh: [113, 209, 128, 29]}
+      - {cls: container, xywh: [95, 245, 142, 37]}
+      - {cls: container, xywh: [0, 241, 86, 40]}
+      - {cls: container, xywh: [343, 318, 114, 42]}
+      - {cls: container, xywh: [462, 306, 63, 54]}
+      - {cls: container, xywh: [380, 277, 137, 31]}
+      - {cls: container, xywh: [382, 241, 132, 36]}
+    - id: cam-yard-12
+      index: 177
+      done: true
+      boxes:
+      - {cls: crane, xywh: [242, 78, 160, 242]}
+      - {cls: crane, xywh: [131, 56, 51, 114]}
+      - {cls: crane, xywh: [70, 54, 54, 111]}
+      - {cls: crane, xywh: [559, 70, 53, 107]}
+      - {cls: container, xywh: [0, 178, 105, 30]}
+      - {cls: container, xywh: [0, 210, 103, 27]}
+      - {cls: container, xywh: [0, 240, 85, 39]}
+      - {cls: container, xywh: [92, 244, 142, 37]}
+      - {cls: container, xywh: [110, 210, 128, 30]}
+      - {cls: container, xywh: [110, 176, 131, 31]}
+      - {cls: container, xywh: [342, 320, 115, 40]}
+      - {cls: container, xywh: [456, 310, 67, 44]}
+      - {cls: container, xywh: [387, 274, 133, 34]}
+      - {cls: container, xywh: [383, 240, 132, 32]}
+    - id: cam-yard-13
+      index: 191
+      done: true
+      boxes:
+      - {cls: crane, xywh: [243, 69, 146, 251]}
+      - {cls: crane, xywh: [558, 70, 47, 108]}
+      - {cls: crane, xywh: [136, 60, 44, 114]}
+      - {cls: crane, xywh: [71, 54, 54, 124]}
+      - {cls: container, xywh: [0, 175, 106, 33]}
+      - {cls: container, xywh: [0, 207, 105, 33]}
+      - {cls: container, xywh: [0, 245, 89, 34]}
+      - {cls: container, xywh: [109, 179, 127, 29]}
+      - {cls: container, xywh: [110, 212, 128, 28]}
+      - {cls: container, xywh: [96, 245, 140, 36]}
+      - {cls: container, xywh: [352, 320, 106, 40]}
+      - {cls: container, xywh: [458, 309, 69, 40]}
+      - {cls: container, xywh: [387, 277, 133, 35]}
+      - {cls: container, xywh: [378, 240, 136, 39]}
+    - id: cam-yard-14
+      index: 205
+      done: true
+      boxes:
+      - {cls: crane, xywh: [250, 70, 155, 266]}
+      - {cls: crane, xywh: [135, 55, 43, 124]}
+      - {cls: crane, xywh: [71, 57, 52, 121]}
+      - {cls: crane, xywh: [550, 68, 56, 112]}
+      - {cls: container, xywh: [110, 178, 134, 29]}
+      - {cls: container, xywh: [111, 214, 132, 29]}
+      - {cls: container, xywh: [93, 243, 149, 38]}
+      - {cls: container, xywh: [2, 180, 99, 30]}
+      - {cls: container, xywh: [1, 211, 104, 26]}
+      - {cls: container, xywh: [0, 254, 85, 25]}
+      - {cls: container, xywh: [331, 318, 125, 42]}
+      - {cls: container, xywh: [456, 306, 66, 45]}
+      - {cls: container, xywh: [391, 277, 127, 27]}
+      - {cls: container, xywh: [387, 243, 129, 36]}
+    - id: cam-yard-15
+      index: 220
+      done: true
+      boxes:
+      - {cls: crane, xywh: [255, 70, 146, 267]}
+      - {cls: crane, xywh: [136, 53, 49, 114]}
+      - {cls: crane, xywh: [76, 56, 47, 114]}
+      - {cls: crane, xywh: [563, 69, 41, 107]}
+      - {cls: container, xywh: [111, 178, 135, 32]}
+      - {cls: container, xywh: [0, 175, 102, 32]}
+      - {cls: container, xywh: [111, 212, 133, 30]}
+      - {cls: container, xywh: [0, 208, 102, 31]}
+      - {cls: container, xywh: [93, 248, 150, 33]}
+      - {cls: container, xywh: [0, 245, 86, 36]}
+      - {cls: container, xywh: [339, 318, 120, 42]}
+      - {cls: container, xywh: [460, 310, 67, 43]}
+      - {cls: container, xywh: [385, 277, 134, 30]}
+      - {cls: container, xywh: [377, 241, 140, 37]}
+    - id: cam-yard-16
+      index: 234
+      done: true
+      boxes:
+      - {cls: crane, xywh: [251, 70, 152, 269]}
+      - {cls: crane, xywh: [131, 53, 47, 116]}
+      - {cls: crane, xywh: [70, 55, 55, 112]}
+      - {cls: crane, xywh: [542, 70, 63, 113]}
+      - {cls: container, xywh: [111, 179, 132, 29]}
+      - {cls: container, xywh: [0, 175, 103, 33]}
+      - {cls: container, xywh: [0, 207, 107, 33]}
+      - {cls: container, xywh: [111, 211, 133, 29]}
+      - {cls: container, xywh: [93, 242, 149, 37]}
+      - {cls: container, xywh: [0, 241, 85, 40]}
+      - {cls: container, xywh: [344, 316, 117, 44]}
+      - {cls: container, xywh: [458, 307, 64, 43]}
+      - {cls: container, xywh: [384, 279, 136, 33]}
+      - {cls: container, xywh: [384, 240, 129, 39]}
+    - id: cam-yard-17
+      index: 248
+      done: true
+      boxes:
+      - {cls: crane, xywh: [260, 65, 142, 267]}
+      - {cls: crane, xywh: [135, 56, 50, 119]}
+      - {cls: crane, xywh: [69, 53, 56, 114]}
+      - {cls: crane, xywh: [542, 69, 64, 110]}
+      - {cls: container, xywh: [110, 178, 136, 31]}
+      - {cls: container, xywh: [0, 177, 103, 31]}
+      - {cls: container, xywh: [111, 213, 131, 27]}
+      - {cls: container, xywh: [0, 209, 104, 31]}
+      - {cls: container, xywh: [94, 245, 145, 36]}
+      - {cls: container, xywh: [0, 243, 86, 36]}
+      - {cls: container, xywh: [344, 318, 117, 42]}
+      - {cls: container, xywh: [461, 308, 64, 51]}
+      - {cls: container, xywh: [391, 277, 129, 31]}
+      - {cls: container, xywh: [385, 243, 128, 32]}
+    - id: cam-yard-18
+      index: 262
+      done: true
+      boxes:
+      - {cls: crane, xywh: [255, 61, 150, 274]}
+      - {cls: crane, xywh: [136, 57, 42, 109]}
+      - {cls: crane, xywh: [73, 54, 50, 112]}
+      - {cls: crane, xywh: [538, 69, 69, 113]}
+      - {cls: container, xywh: [112, 178, 132, 34]}
+      - {cls: container, xywh: [0, 178, 105, 32]}
+      - {cls: container, xywh: [0, 210, 103, 27]}
+      - {cls: container, xywh: [111, 215, 131, 24]}
+      - {cls: container, xywh: [92, 244, 149, 37]}
+      - {cls: container, xywh: [0, 244, 85, 37]}
+      - {cls: container, xywh: [343, 318, 117, 42]}
+      - {cls: container, xywh: [460, 307, 63, 44]}
+      - {cls: container, xywh: [387, 278, 133, 30]}
+      - {cls: container, xywh: [383, 243, 130, 35]}
+    - id: cam-yard-19
+      index: 276
+      done: true
+      boxes:
+      - {cls: crane, xywh: [257, 59, 147, 286]}
+      - {cls: crane, xywh: [136, 60, 41, 108]}
+      - {cls: crane, xywh: [73, 56, 49, 110]}
+      - {cls: crane, xywh: [538, 69, 72, 105]}
+      - {cls: container, xywh: [109, 179, 134, 31]}
+      - {cls: container, xywh: [111, 212, 133, 29]}
+      - {cls: container, xywh: [94, 243, 146, 40]}
+      - {cls: container, xywh: [0, 175, 103, 29]}
+      - {cls: container, xywh: [0, 206, 105, 31]}
+      - {cls: container, xywh: [0, 243, 84, 38]}
+      - {cls: container, xywh: [343, 315, 116, 45]}
+      - {cls: container, xywh: [458, 308, 66, 52]}
+      - {cls: container, xywh: [384, 275, 134, 39]}
+      - {cls: container, xywh: [381, 241, 133, 36]}
+  cam-waterway:
+    clip: waterway_porpoise_bay.mp4
+    clip_sha256: 2acab41432f7da4082d3f8420cb67b3469b1c96aabef16377a1eb54d7193f8bf
+    frames:
+    - id: cam-waterway-00
+      index: 8
+      done: true
+      boxes:
+      - {cls: boat, xywh: [611, 173, 29, 71]}
+    - id: cam-waterway-01
+      index: 24
+      done: true
+      boxes:
+      - {cls: boat, xywh: [476, 52, 164, 289]}
+    - id: cam-waterway-02
+      index: 40
+      done: true
+      boxes:
+      - {cls: boat, xywh: [325, 49, 315, 298]}
+    - id: cam-waterway-03
+      index: 56
+      done: true
+      boxes:
+      - {cls: boat, xywh: [160, 36, 480, 312]}
+    - id: cam-waterway-04
+      index: 72
+      done: true
+      boxes:
+      - {cls: boat, xywh: [1, 21, 639, 326]}
+    - id: cam-waterway-05
+      index: 88
+      done: true
+      boxes:
+      - {cls: boat, xywh: [1, 8, 639, 340]}
+    - id: cam-waterway-06
+      index: 104
+      done: true
+      boxes:
+      - {cls: boat, xywh: [2, 63, 638, 285]}
+    - id: cam-waterway-07
+      index: 120
+      done: true
+      boxes:
+      - {cls: boat, xywh: [2, 46, 638, 314]}
+    - id: cam-waterway-08
+      index: 136
+      done: true
+      boxes:
+      - {cls: boat, xywh: [2, 35, 638, 312]}
+    - id: cam-waterway-09
+      index: 152
+      done: true
+      boxes:
+      - {cls: boat, xywh: [1, 28, 639, 320]}
+    - id: cam-waterway-10
+      index: 168
+      done: true
+      boxes:
+      - {cls: boat, xywh: [1, 0, 639, 348]}
+    - id: cam-waterway-11
+      index: 184
+      done: true
+      boxes:
+      - {cls: boat, xywh: [1, 0, 639, 349]}
+    - id: cam-waterway-12
+      index: 200
+      done: true
+      boxes:
+      - {cls: boat, xywh: [0, 0, 640, 345]}
+    - id: cam-waterway-13
+      index: 216
+      done: true
+      boxes:
+      - {cls: boat, xywh: [0, 0, 499, 349]}
+    - id: cam-waterway-14
+      index: 232
+      done: true
+      boxes:
+      - {cls: boat, xywh: [0, 0, 326, 349]}
+      - {cls: boat, xywh: [506, 215, 134, 130]}
+    - id: cam-waterway-15
+      index: 248
+      done: true
+      boxes:
+      - {cls: boat, xywh: [342, 133, 298, 215]}
+      - {cls: boat, xywh: [0, 28, 125, 321]}
+    - id: cam-waterway-16
+      index: 264
+      done: true
+      boxes:
+      - {cls: boat, xywh: [158, 127, 398, 217]}
+    - id: cam-waterway-17
+      index: 280
+      done: true
+      boxes:
+      - {cls: boat, xywh: [0, 112, 390, 233]}
+    - id: cam-waterway-18
+      index: 296
+      done: true
+      boxes:
+      - {cls: boat, xywh: [0, 246, 208, 101]}
+    - id: cam-waterway-19
+      index: 312
+      done: true
+      boxes: []

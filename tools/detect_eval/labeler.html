@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Port frame labeller</title>
+<style>
+  :root { --bg:#1b1d21; --panel:#25282e; --fg:#e6e6e6; --dim:#9aa0a6; --acc:#4fa3ff; --ok:#3fb950; --warn:#d29922; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.4 system-ui, sans-serif;
+         display:grid; grid-template-columns: 230px 1fr 260px; height:100vh; }
+  aside { background:var(--panel); overflow:auto; padding:10px; }
+  h2 { font-size:13px; margin:12px 0 4px; color:var(--dim); text-transform:uppercase; letter-spacing:.05em; }
+  .frame { display:flex; justify-content:space-between; padding:2px 6px; border-radius:4px; cursor:pointer; font-family:ui-monospace,monospace; font-size:12px; }
+  .frame:hover { background:#30343b; }
+  .frame.cur { background:#1f3b5c; }
+  .frame .st { color:var(--dim); }
+  .frame.done .st { color:var(--ok); }
+  main { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px; min-width:0; }
+  #wrap { position:relative; max-width:100%; }
+  canvas { display:block; max-width:100%; height:auto; cursor:crosshair; background:#000; }
+  #bar { margin-top:8px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  button { background:#30343b; color:var(--fg); border:1px solid #444; border-radius:4px; padding:4px 10px; cursor:pointer; }
+  button.primary { background:var(--acc); border-color:var(--acc); color:#000; }
+  .cls { display:flex; align-items:center; gap:6px; padding:3px 6px; border-radius:4px; cursor:pointer; }
+  .cls.cur { outline:2px solid var(--fg); }
+  .sw { width:12px; height:12px; border-radius:2px; flex:none; }
+  .key { font-family:ui-monospace,monospace; color:var(--dim); width:14px; }
+  .coco { color:var(--dim); font-size:11px; margin-left:auto; }
+  #boxes .b { font-family:ui-monospace,monospace; font-size:12px; padding:2px 4px; cursor:pointer; border-radius:3px; }
+  #boxes .b.sel { background:#1f3b5c; }
+  #status { color:var(--dim); font-size:12px; }
+  #status.err { color:#f85149; }
+  kbd { background:#30343b; border:1px solid #444; border-radius:3px; padding:0 4px; font-size:11px; }
+  ul.help { padding-left:16px; margin:4px 0; color:var(--dim); font-size:12px; }
+</style>
+</head>
+<body>
+<aside id="list"></aside>
+<main>
+  <div id="wrap"><canvas id="cv" width="1280" height="720"></canvas></div>
+  <div id="bar">
+    <button id="prev">◀ prev</button>
+    <span id="title"></span>
+    <label><input type="checkbox" id="done"> done</label>
+    <button id="next" class="primary">done + next ▶</button>
+    <span id="status"></span>
+  </div>
+</main>
+<aside>
+  <h2>Class (keys 1–9)</h2>
+  <div id="classes"></div>
+  <h2>Boxes in this frame</h2>
+  <div id="boxes"></div>
+  <h2>Keys</h2>
+  <ul class="help">
+    <li>drag on empty area: new box</li>
+    <li>drag inside a box: move; near a corner: resize</li>
+    <li><kbd>1</kbd>–<kbd>9</kbd> class (also changes the selected box)</li>
+    <li><kbd>i</kbd> toggle ignore (dashed) on selected box</li>
+    <li><kbd>Del</kbd>/<kbd>Backspace</kbd> delete selected box</li>
+    <li><kbd>Space</kbd> mark done, next frame</li>
+    <li><kbd>←</kbd>/<kbd>→</kbd> previous / next frame</li>
+    <li><kbd>h</kbd> hold: hide boxes (see what is under them)</li>
+  </ul>
+  <h2>Guidelines</h2>
+  <ul class="help">
+    <li>Box every visible object of the classes, also when nothing moves.</li>
+    <li>truck = whole vehicle incl. trailer and load.</li>
+    <li>container = only containers not on a vehicle, one box per stack block.</li>
+    <li>ignore = &lt; ~12 px high, mostly hidden, cut by the edge, or behind the OSD.</li>
+    <li>An empty frame is a valid label: mark it done.</li>
+  </ul>
+</aside>
+<script>
+"use strict";
+const COLORS = ["#ff6b6b","#4fa3ff","#ffd43b","#38d9a9","#da77f2","#ff922b","#a9e34b","#f783ac","#74c0fc"];
+const S = 2;               // canvas pixels per label pixel (640x360 -> 1280x720)
+const HANDLE = 10;         // corner grab radius in canvas pixels
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+let data, order = [], cur = 0, img = new Image(), sel = -1, clsIdx = 0, drag = null, hide = false, saveTimer = null;
+
+const frameAt = i => { const [cam, id] = order[i]; return data.cameras[cam].frames.find(f => f.id === id); };
+const classes = () => Object.keys(data.classes);
+const color = cls => COLORS[classes().indexOf(cls) % COLORS.length];
+
+async function init() {
+  data = await (await fetch("/api/labels")).json();
+  for (const [cam, cs] of Object.entries(data.cameras)) for (const f of cs.frames) order.push([cam, f.id]);
+  const firstTodo = order.findIndex(([c, id]) => !data.cameras[c].frames.find(f => f.id === id).done);
+  cur = firstTodo < 0 ? 0 : firstTodo;
+  drawClasses(); load();
+}
+
+function drawList() {
+  const el = document.getElementById("list"); el.innerHTML = "";
+  let n = 0;
+  for (const [cam, cs] of Object.entries(data.cameras)) {
+    const done = cs.frames.filter(f => f.done).length;
+    const h = document.createElement("h2"); h.textContent = `${cam} ${done}/${cs.frames.length}`; el.appendChild(h);
+    for (const f of cs.frames) {
+      const i = n++, d = document.createElement("div");
+      d.className = "frame" + (f.done ? " done" : "") + (i === cur ? " cur" : "");
+      d.innerHTML = `<span>${f.id.replace(cam + "-", "#")} <span class="st">t=${(f.index / data.fps).toFixed(1)}s</span></span><span class="st">${f.done ? "✓ " + f.boxes.length : "…"}</span>`;
+      d.onclick = () => go(i); el.appendChild(d);
+      if (i === cur) setTimeout(() => d.scrollIntoView({block: "nearest"}), 0);
+    }
+  }
+}
+
+function drawClasses() {
+  const el = document.getElementById("classes"); el.innerHTML = "";
+  classes().forEach((c, i) => {
+    const d = document.createElement("div");
+    d.className = "cls" + (i === clsIdx ? " cur" : "");
+    d.innerHTML = `<span class="key">${i + 1}</span><span class="sw" style="background:${COLORS[i % COLORS.length]}"></span>${c}<span class="coco">${data.classes[c] ?? "no COCO"}</span>`;
+    d.onclick = () => setClass(i); el.appendChild(d);
+  });
+}
+
+function load() {
+  const [cam, id] = order[cur]; sel = -1;
+  img = new Image(); img.onload = draw; img.src = `/frames/${cam}/${id}.jpg`;
+  const f = frameAt(cur);
+  document.getElementById("title").textContent = `${id}  (${cur + 1}/${order.length})`;
+  document.getElementById("done").checked = f.done;
+  drawList(); draw();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  if (img.complete && img.naturalWidth) ctx.drawImage(img, 0, 0, cv.width, cv.height);
+  const f = frameAt(cur), boxesEl = document.getElementById("boxes");
+  boxesEl.innerHTML = f.boxes.length ? "" : '<span style="color:var(--dim)">none</span>';
+  f.boxes.forEach((b, i) => {
+    const [x, y, w, h] = b.xywh;
+    if (!hide) {
+      ctx.strokeStyle = color(b.cls); ctx.lineWidth = i === sel ? 3 : 2;
+      ctx.setLineDash(b.ignore ? [8, 6] : []);
+      ctx.strokeRect(x * S, y * S, w * S, h * S); ctx.setLineDash([]);
+      const label = b.cls + (b.ignore ? " (ignore)" : "");
+      ctx.font = "bold 18px system-ui"; const tw = ctx.measureText(label).width;
+      ctx.fillStyle = color(b.cls); ctx.fillRect(x * S, Math.max(0, y * S - 22), tw + 8, 22);
+      ctx.fillStyle = "#000"; ctx.fillText(label, x * S + 4, Math.max(16, y * S - 5));
+      if (i === sel) for (const [cx, cy] of corners(b)) { ctx.fillStyle = "#fff"; ctx.fillRect(cx - 4, cy - 4, 8, 8); }
+    }
+    const d = document.createElement("div");
+    d.className = "b" + (i === sel ? " sel" : "");
+    d.innerHTML = `<span style="color:${color(b.cls)}">■</span> ${b.cls}${b.ignore ? " ⌀" : ""} [${b.xywh.join(", ")}]`;
+    d.onclick = () => { sel = i; draw(); }; boxesEl.appendChild(d);
+  });
+  if (drag && drag.kind === "new") {
+    const r = norm(drag.x0, drag.y0, drag.x1, drag.y1);
+    ctx.strokeStyle = COLORS[clsIdx % COLORS.length]; ctx.lineWidth = 2; ctx.strokeRect(r[0] * S, r[1] * S, r[2] * S, r[3] * S);
+  }
+}
+
+const corners = b => { const [x, y, w, h] = b.xywh.map(v => v * S); return [[x, y], [x + w, y], [x, y + h], [x + w, y + h]]; };
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+function norm(x0, y0, x1, y1) {
+  const x = Math.round(Math.min(x0, x1)), y = Math.round(Math.min(y0, y1));
+  return [x, y, Math.round(Math.max(x0, x1)) - x, Math.round(Math.max(y0, y1)) - y];
+}
+function pos(ev) {  // event -> label pixels (640x360), clamped to the frame
+  const r = cv.getBoundingClientRect();
+  return [clamp((ev.clientX - r.left) / r.width * data.width, 0, data.width),
+          clamp((ev.clientY - r.top) / r.height * data.height, 0, data.height)];
+}
+function hit(px, py) {  // -> {i, corner} of the topmost box under the point
+  const f = frameAt(cur), cx = px * S, cy = py * S;
+  for (let i = f.boxes.length - 1; i >= 0; i--) {
+    const k = corners(f.boxes[i]).findIndex(([x, y]) => Math.abs(x - cx) <= HANDLE && Math.abs(y - cy) <= HANDLE);
+    if (k >= 0) return {i, corner: k};
+  }
+  for (let i = f.boxes.length - 1; i >= 0; i--) {
+    const [x, y, w, h] = f.boxes[i].xywh;
+    if (px >= x && px <= x + w && py >= y && py <= y + h) return {i, corner: -1};
+  }
+  return null;
+}
+
+cv.addEventListener("mousedown", ev => {
+  const [px, py] = pos(ev), h = hit(px, py), f = frameAt(cur);
+  if (h) {
+    sel = h.i; const [x, y, w, hh] = f.boxes[h.i].xywh;
+    drag = h.corner >= 0
+      ? {kind: "resize", i: h.i, ax: h.corner % 2 ? x : x + w, ay: h.corner >= 2 ? y : y + hh}  // anchor = opposite corner
+      : {kind: "move", i: h.i, dx: px - x, dy: py - y};
+  } else { sel = -1; drag = {kind: "new", x0: px, y0: py, x1: px, y1: py}; }
+  draw();
+});
+window.addEventListener("mousemove", ev => {
+  if (!drag) return;
+  const [px, py] = pos(ev), f = frameAt(cur);
+  if (drag.kind === "new") { drag.x1 = px; drag.y1 = py; }
+  else if (drag.kind === "move") {
+    const b = f.boxes[drag.i], [, , w, h] = b.xywh;
+    b.xywh = [Math.round(clamp(px - drag.dx, 0, data.width - w)), Math.round(clamp(py - drag.dy, 0, data.height - h)), w, h];
+  } else {
+    const r = norm(drag.ax, drag.ay, px, py);
+    if (r[2] >= 1 && r[3] >= 1) f.boxes[drag.i].xywh = r;
+  }
+  draw();
+});
+window.addEventListener("mouseup", () => {
+  if (!drag) return;
+  const f = frameAt(cur);
+  if (drag.kind === "new") {
+    const r = norm(drag.x0, drag.y0, drag.x1, drag.y1);
+    if (r[2] >= 2 && r[3] >= 2) { f.boxes.push({cls: classes()[clsIdx], xywh: r, ignore: false}); sel = f.boxes.length - 1; save(); }
+  } else save();
+  drag = null; draw();
+});
+
+function setClass(i) {
+  clsIdx = i; drawClasses();
+  const f = frameAt(cur);
+  if (sel >= 0) { f.boxes[sel].cls = classes()[i]; save(); draw(); }
+}
+function go(i) { flush(); cur = clamp(i, 0, order.length - 1); load(); }
+function save() { clearTimeout(saveTimer); saveTimer = setTimeout(flush, 300); setStatus("…"); }
+async function flush() {
+  if (saveTimer === null) return;
+  clearTimeout(saveTimer); saveTimer = null;
+  const [cam, id] = order[cur], f = frameAt(cur);
+  const res = await fetch(`/api/frames/${cam}/${id}`, {method: "PUT", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({done: f.done, boxes: f.boxes})});
+  const body = await res.json();
+  if (res.ok) setStatus(`saved ${id}`); else setStatus(`NOT saved: ${body.error}`, true);
+}
+function setStatus(t, err) { const s = document.getElementById("status"); s.textContent = t; s.className = err ? "err" : ""; }
+
+document.getElementById("done").onchange = ev => { frameAt(cur).done = ev.target.checked; save(); drawList(); };
+document.getElementById("prev").onclick = () => go(cur - 1);
+document.getElementById("next").onclick = () => doneNext();
+function doneNext() { frameAt(cur).done = true; save(); go(cur + 1); }
+
+window.addEventListener("keydown", ev => {
+  if (ev.target.tagName === "INPUT") return;
+  const f = frameAt(cur);
+  if (ev.key >= "1" && ev.key <= "9" && +ev.key <= classes().length) setClass(+ev.key - 1);
+  else if (ev.key === "i" && sel >= 0) { f.boxes[sel].ignore = !f.boxes[sel].ignore; save(); draw(); }
+  else if ((ev.key === "Delete" || ev.key === "Backspace") && sel >= 0) { f.boxes.splice(sel, 1); sel = -1; save(); draw(); }
+  else if (ev.key === " ") { ev.preventDefault(); doneNext(); }
+  else if (ev.key === "ArrowRight") go(cur + 1);
+  else if (ev.key === "ArrowLeft") go(cur - 1);
+  else if (ev.key === "h") { hide = true; draw(); }
+  else return;
+  ev.preventDefault();
+});
+window.addEventListener("keyup", ev => { if (ev.key === "h") { hide = false; draw(); } });
+window.addEventListener("beforeunload", flush);
+init();
+</script>
+</body>
+</html>
